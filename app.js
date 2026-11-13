@@ -26,6 +26,10 @@
   var q = null, shown = 0, picked = -1, solved = false, answers = [];
   var shownAt = 0, startedAt = 0, tick = null, lock = null, introTimer = null;
   var sel = 5, firstPaint = true, eraseArmed = null;
+  // The Claude API key is typed in Settings and never leaves this phone except in requests to Anthropic.
+  var apiKey = load("44d.key", "");
+  if (typeof apiKey !== "string") apiKey = "";
+  var turns = [], system = "", running = false, ctl = null, photoFile = null;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -124,6 +128,11 @@
       ? plural(log.length, "question") + " logged on this phone. Erasing clears your streak, chart and log."
       : "Nothing logged yet.";
     $("erase").disabled = !log.length;
+
+    var hasKey = !!apiKey;
+    $("chat-on").hidden = !hasKey;
+    $("work-on").hidden = !hasKey;
+    Array.prototype.forEach.call(document.querySelectorAll(".need-key"), function (b) { b.hidden = hasKey; });
   }
 
   // ---------- question ----------
@@ -167,6 +176,18 @@
     $("hint-btn").textContent = "Give me a hint";
     $("walk").hidden = true;
     $("log-card").hidden = true;
+
+    if (ctl) ctl.abort();
+    turns = [];
+    system = buildSystem(q);
+    photoFile = null;
+    $("thread").textContent = "";
+    $("ask").value = "";
+    $("work").value = "";
+    $("photo").value = "";
+    $("thumb").hidden = true;
+    $("work-reply").hidden = true;
+    $("work-card").hidden = false;
   }
 
   function finish() {
@@ -201,6 +222,7 @@
     });
     $("check").hidden = true;
     $("hint-card").hidden = true;
+    $("work-card").hidden = true;
 
     var steps = $("steps");
     steps.textContent = "";
@@ -240,6 +262,10 @@
     var li = el("li");
     li.appendChild(el("b", "", "Hint " + (shown + 1) + " of " + q.hints.length));
     li.appendChild(document.createTextNode(q.hints[shown]));
+    var w = el("button", "why", "But why?"), idx = shown;
+    w.type = "button";
+    w.addEventListener("click", function () { why(idx); });
+    li.appendChild(w);
     $("hints").appendChild(li);
     shown++;
     if (shown >= q.hints.length) {
@@ -261,6 +287,205 @@
   $("next").addEventListener("click", function () {
     openQuestion();
     window.scrollTo(0, 0);
+  });
+
+  // ---------- tutor ----------
+  // The system prompt is built once per question and never changes during that conversation; anything
+  // that changes (hints opened, solved or not) travels as an app note at the start of each new message.
+  function buildSystem(q) {
+    var lines = [
+      "You are the tutor inside 44 Days, a GRE quant practice app. The student is rusty at maths and is working through the question below on their phone. Your job is to help them think, never to do the thinking for them, because working it out themselves is what makes it stick for the real test.",
+      "",
+      "<question>",
+      "Type: " + TYPES[q.type],
+      q.stem
+    ];
+    if (q.type === "qc") lines.push("Quantity A: " + q.qa, "Quantity B: " + q.qb);
+    q.choices.forEach(function (c, i) { lines.push(LETTERS.charAt(i) + ". " + c); });
+    lines.push("</question>", "", "<hints>");
+    q.hints.forEach(function (h, i) { lines.push((i + 1) + ". " + h); });
+    lines.push("</hints>", "", "<checked_solution>", "Correct choice: " + LETTERS.charAt(q.answer) + ". " + q.choices[q.answer]);
+    q.steps.forEach(function (s) { lines.push("- " + s); });
+    lines.push(
+      "Key idea: " + q.takeaway,
+      "</checked_solution>",
+      "",
+      "How to help:",
+      "- The checked solution is for your eyes only. Until an app note says the student has answered correctly, never say which choice is correct, never state the final result, and never carry out the last step for them. If they ask for the answer, kindly decline and offer the next small step instead. Once an app note says they have answered correctly, you may discuss the full solution openly.",
+      "- Answer the exact question they asked, however basic. They are relearning this and chose to ask, so treat every question as a good one.",
+      "- Explain from first principles with small concrete numbers, one idea at a time. A worked example with different numbers from the question teaches more than a rule.",
+      "- Reply in 2 to 4 short sentences. The app shows plain text only, so write maths in plain characters such as 3/4, x^2 or 20% of 120, with no Markdown and no LaTeX. End with one small question that moves them forward.",
+      "- A message may begin with an app note in square brackets. It comes from the app, not the student. It says which of the numbered hints they have opened and whether they have solved the question. Use it, but do not mention it.",
+      "- When a picture would help, or they ask for one, add one final line in exactly this form with nothing after it:",
+      'PICTURE: {"bars":[["label",number],["label",number]],"slices":5}',
+      "  The app draws up to 3 horizontal bars to scale, each cut into that many equal slices with the first slice highlighted. It suits comparing amounts, parts of a whole, ratios and percents. Labels must not give away the answer. Bars are the only picture the app can draw for now, so if bars would not help, explain in words and say so."
+    );
+    return lines.join("\n");
+  }
+  function note() {
+    return "[App note: " + (shown ? "the student has opened hints 1 to " + shown + " of " + q.hints.length : "the student has not opened any hints") +
+      ". They have " + (solved ? "now answered correctly" : "not answered correctly yet") + ".]";
+  }
+  function visible(text) { return String(text || "").replace(/\n?\s*PICTURE:[\s\S]*$/, "").trim(); }
+  function textOf(message) {
+    return (message.content || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("");
+  }
+  // Draws the bar picture the tutor describes. Built with DOM calls so nothing in the reply is run as markup.
+  function drawBars(spec) {
+    var NS = "http://www.w3.org/2000/svg";
+    var bars = spec && Array.isArray(spec.bars) ? spec.bars.slice(0, 3).filter(function (b) {
+      return Array.isArray(b) && isFinite(b[1]) && b[1] > 0;
+    }) : [];
+    if (!bars.length) return null;
+    var slices = Math.max(1, Math.min(12, Math.round(spec.slices) || 1));
+    var max = Math.max.apply(null, bars.map(function (b) { return +b[1]; }));
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "pic");
+    svg.setAttribute("viewBox", "0 0 300 " + (bars.length * 56 - 4));
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Bars to scale: " + bars.map(function (b) { return b[0] + " " + b[1]; }).join(", "));
+    bars.forEach(function (b, i) {
+      var y = i * 56, w = 292 * b[1] / max / slices;
+      var t = document.createElementNS(NS, "text");
+      t.setAttribute("x", 4);
+      t.setAttribute("y", y + 12);
+      t.textContent = (String(b[0]).slice(0, 28) + " · " + b[1]).toUpperCase();
+      svg.appendChild(t);
+      for (var k = 0; k < slices; k++) {
+        var r = document.createElementNS(NS, "rect");
+        r.setAttribute("class", "seg" + (k === 0 ? (i === 0 ? " a" : " b") : ""));
+        r.setAttribute("x", 4 + k * w);
+        r.setAttribute("y", y + 20);
+        r.setAttribute("width", Math.max(1, w - 2));
+        r.setAttribute("height", 24);
+        r.setAttribute("rx", 4);
+        svg.appendChild(r);
+      }
+    });
+    return svg;
+  }
+  function pictureFrom(text) {
+    var m = /PICTURE:\s*(\{[\s\S]*\})\s*$/.exec(String(text || ""));
+    if (!m) return null;
+    try { return drawBars(JSON.parse(m[1])); } catch (e) { return null; }
+  }
+  function bubble(cls, label, text) {
+    var b = el("div", "bubble " + cls);
+    if (label) b.appendChild(el("b", "", label));
+    b.appendChild(el("span", "t", text));
+    return b;
+  }
+  function view(node) { node.scrollIntoView({ block: "nearest", behavior: STILL ? "auto" : "smooth" }); }
+  function setBusy(on) {
+    running = on;
+    $("send").textContent = on ? "Stop" : "Send";
+    $("work-send").textContent = on ? "Stop" : "Check my work";
+  }
+  // Sends `messages` to Claude and streams the reply into `box`. Calls ok(message) or fail().
+  function ask(messages, effort, box, ok, fail) {
+    var out = box.querySelector(".t");
+    if (!window.Tutor) {
+      out.textContent = "The tutor could not load. Check your connection, then close and reopen the app.";
+      setBusy(false);
+      fail();
+      return;
+    }
+    setBusy(true);
+    out.textContent = "Thinking…";
+    ctl = new AbortController();
+    window.Tutor.reply({
+      key: apiKey, system: system, messages: messages, effort: effort, signal: ctl.signal,
+      onText: function (t) { out.textContent = visible(t) || "Thinking…"; view(box); }
+    }).then(function (message) {
+      var text = textOf(message);
+      if (message.stop_reason === "refusal" || !visible(text)) {
+        out.textContent = "The tutor could not answer that one. Try asking it a different way.";
+        fail();
+        return;
+      }
+      out.textContent = visible(text);
+      var pic = pictureFrom(text);
+      if (pic) box.appendChild(pic);
+      ok(message);
+    }, function (e) {
+      var info = window.Tutor.explain(e);
+      var kept = out.textContent === "Thinking…" ? "" : out.textContent;
+      out.textContent = info.cancelled ? (kept || "Stopped.") : (kept ? kept + "\n\n" : "") + info.text;
+      fail();
+    }).then(function () { setBusy(false); view(box); });
+  }
+  // shortcut: the whole conversation for a question is resent each turn; fine for a short chat, trim if chats get long.
+  function chat(shownText, sentText) {
+    if (running || !apiKey) return;
+    $("thread").appendChild(bubble("me", "", shownText));
+    var box = bubble("tutor", "Tutor", "");
+    $("thread").appendChild(box);
+    view(box);
+    var mine = turns; // stays with this question even if the student moves on mid-reply
+    mine.push({ role: "user", content: note() + "\n\n" + sentText });
+    ask(mine.slice(), "low", box, function (message) {
+      // Claude's reply goes back exactly as it arrived, so its reasoning stays valid on the next turn.
+      mine.push({ role: "assistant", content: message.content });
+    }, function () { mine.pop(); });
+  }
+  function why(i) {
+    if (i < 0) chat("But why?", "But why? I have not opened a hint yet.");
+    else chat("But why? (hint " + (i + 1) + ")", "But why? I am asking about hint " + (i + 1) + ".");
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      var k = chip.getAttribute("data-q");
+      if (k === "why") why(shown - 1);
+      else if (k === "simple") chat("Explain it simpler", "Explain it more simply, please.");
+      else chat("Show me a picture", "Show me a picture that makes this clearer.");
+    });
+  });
+  $("send").addEventListener("click", function () {
+    if (running) { if (ctl) ctl.abort(); return; }
+    var text = $("ask").value.trim();
+    if (!text) { $("ask").focus(); return; }
+    $("ask").value = "";
+    chat(text, text);
+  });
+
+  $("photo").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    photoFile = f;
+    var r = new FileReader();
+    r.onload = function () { $("thumb").src = r.result; $("thumb").hidden = false; };
+    r.readAsDataURL(f);
+  });
+  $("speak").addEventListener("click", function () {
+    var t = $("work");
+    t.placeholder = "Tap the microphone on your keyboard and talk. Your words appear here.";
+    t.focus();
+  });
+  $("work-send").addEventListener("click", function () {
+    if (running) { if (ctl) ctl.abort(); return; }
+    var text = $("work").value.trim(), file = photoFile;
+    if (!apiKey) return;
+    if (!text && !file) { $("work").focus(); return; }
+    var box = $("work-reply"), out = box.querySelector(".t"), old = box.querySelector("svg");
+    if (old) old.remove();
+    box.hidden = false;
+    out.textContent = "Thinking…";
+    setBusy(true);
+    var ready = file && window.Tutor ? window.Tutor.photo(file) : Promise.resolve(null);
+    ready.then(function (img) {
+      var content = [];
+      if (img) content.push({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } });
+      content.push({
+        type: "text",
+        text: note() + "\n\nThe student is showing you their working" + (img ? " in the attached photo of their handwritten notes" : "") +
+          (text ? ', and says: "' + text + '"' : "") +
+          ". Say what is right so far, then point to the first step that goes off track by asking a question about it. If nothing is wrong yet, say so and ask what comes next. If you cannot read the photo, say so and ask them to retake it or type the step."
+      });
+      ask([{ role: "user", content: content }], "medium", box, function () {}, function () {});
+    }, function () {
+      out.textContent = "That photo could not be read. Try taking it again.";
+      setBusy(false);
+    });
   });
 
   // ---------- screen stays on while a question is open ----------
@@ -303,10 +528,14 @@
     show("session");
   });
   $("back").addEventListener("click", function () { show("home"); });
-  $("open-settings").addEventListener("click", function () {
+  function openSettings() {
     $("name").value = settings.name;
+    $("key").value = apiKey;
+    $("key-status").hidden = true;
     show("settings");
-  });
+  }
+  $("open-settings").addEventListener("click", openSettings);
+  Array.prototype.forEach.call(document.querySelectorAll(".need-key"), function (b) { b.addEventListener("click", openSettings); });
   $("close-settings").addEventListener("click", function () { show("home"); });
   $("cal-toggle").addEventListener("click", function () {
     var open = $("cal-wrap").hidden;
@@ -327,6 +556,27 @@
     settings.name = this.value.trim();
     save("44d.settings", settings);
     render();
+  });
+  $("key").addEventListener("input", function () {
+    apiKey = this.value.trim();
+    save("44d.key", apiKey);
+    $("key-status").hidden = true;
+    render();
+  });
+  $("test-key").addEventListener("click", function () {
+    var btn = this, st = $("key-status");
+    function say(ok, text) {
+      st.hidden = false;
+      st.className = "label status" + (ok ? "" : " warn");
+      $("key-text").textContent = text;
+    }
+    if (!apiKey) { say(false, "Paste a key first"); return; }
+    if (!window.Tutor) { say(false, "The tutor did not load. Check your connection"); return; }
+    btn.disabled = true;
+    say(true, "Checking…");
+    window.Tutor.testKey(apiKey).then(function () { say(true, "Key works"); }, function (e) {
+      say(false, window.Tutor.explain(e).text);
+    }).then(function () { btn.disabled = false; });
   });
   $("erase").addEventListener("click", function () {
     var btn = this;
