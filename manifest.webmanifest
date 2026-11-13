@@ -1,0 +1,14 @@
+{
+  "name": "44 Days",
+  "short_name": "44 Days",
+  "description": "GRE quant practice, one question at a time.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0e10",
+  "theme_color": "#0e0e10",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
