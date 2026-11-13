@@ -6,25 +6,37 @@ with step-by-step hints that never give the answer away, a timer you start yours
 This is not affiliated with or endorsed by ETS. The questions in this repository are original samples
 written for the app.
 
-## Status: stage 2
+## Status: stage 3
 
-- Home screen: questions left today, streak strip, calendar, weekly chart
-- Settings: daily target, name and Claude API key
-- Five sample questions with hints, a manual timer and a worked explanation
-- Ask the tutor: a chat with Claude about the question on screen, including a "But why?" link under
-  each hint and simple bar pictures. The tutor is told never to give the answer before you solve it.
+- Home screen: questions left today, a five-day streak strip, calendar, weekly chart
+- Settings: daily target, name, Claude API key, tutor speed and the question bank connection
+- Question types: quantitative comparison, multiple choice, select all that apply and numeric entry,
+  with figures and charts
+- Question bank: downloaded from a private repository and kept on the phone. New blueprints come
+  first; a question you struggled with returns two days later as a different version of the same idea.
+  Until a bank is connected, five built-in sample questions are used.
+- Hints, a manual timer, a worked explanation, a key idea and, where one exists, a faster test-day route
+- Ask the tutor: a chat with Claude about the question on screen, taught from first principles, with
+  step-by-step walkthroughs that pair a picture with a colour-coded formula line. The tutor is told never
+  to give the answer before you solve it.
 - Show your work: a photo or a description of what you tried, checked by the tutor
 - Screen stays on while a question is open (where the phone allows it)
 - Progress is saved in the phone's browser storage only
 
-Still to come: the private question bank, and realtime backup of the progress log to a private repository.
+Still to come: realtime backup of the progress log to the private repository.
+
+## Question bank
+
+In Settings, enter the private repository (`owner/name`) and a GitHub fine-grained access token limited to
+that repository with read-only access to Contents. The app downloads `bank.json` from it. The token is kept
+in the phone's browser storage and sent only to `api.github.com`.
 
 ## Claude API key
 
 The tutor needs your own key from the Anthropic console, pasted once into Settings. It is kept in the
 phone's browser storage and sent only to Anthropic. Setting a monthly spend limit in the console is a
-sensible safeguard. The page's security policy only allows connections to this site and to
-`api.anthropic.com`.
+sensible safeguard. The page's security policy only allows connections to this site, to
+`api.anthropic.com` and to `api.github.com`.
 
 `vendor/anthropic-sdk.js` is Anthropic's official JavaScript library (version 0.128.0, MIT licence,
 see `vendor/LICENSE-anthropic-sdk.txt`).

@@ -185,6 +185,10 @@ h1.hello { font-size: 2.15rem; line-height: 1.1; margin: 10px 0 6px; text-wrap: 
 .choice[aria-pressed="true"] { border-color: var(--cyan); background: var(--cyan-soft); }
 .choice.right { border-color: var(--green); background: var(--green-soft); }
 .choice:disabled { cursor: default; }
+.num-row { display: flex; align-items: center; gap: 10px; font-family: var(--serif); font-size: 1.05rem; }
+.field.num { width: 9rem; text-align: left; font: 600 1.15rem var(--sans); font-variant-numeric: tabular-nums; padding: 13px 14px; border-radius: 14px; }
+.takeaway.fast { background: var(--yellow-soft); border-color: rgba(255, 229, 0, .16); }
+.takeaway.fast b { color: var(--yellow); }
 .msg { border-radius: 14px; padding: 12px 14px; margin: 0; }
 .msg.bad { background: var(--orange-soft); color: var(--orange); }
 .msg.good { background: var(--green-soft); color: var(--green); font-weight: 600; }
@@ -252,7 +256,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .62); }
 .walk-legend i.c-green { background: var(--green); }
 .walk-art { background: rgba(0, 0, 0, .28); border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
 .walk-svg { display: block; width: 100%; height: auto; }
-.walk-svg text { fill: var(--text); font-family: var(--sans); }
+.walk-svg text { font-family: var(--sans); }
+.walk-svg text:not([fill]) { fill: var(--text); } /* light by default; a label that sets its own colour keeps it */
 .walk-formula { font: 600 1.25rem/1.35 var(--serif); margin: 0; overflow-wrap: anywhere; }
 .walk-text { margin: 0; line-height: 1.6; }
 span.c-blue { color: var(--cyan-hi); font-weight: 600; }

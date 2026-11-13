@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.anthropic.com https://api.github.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
 <meta name="theme-color" content="#0e0e10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,7 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Source+Serif+4:wght@400;600&display=swap">
-<link rel="stylesheet" href="app.css">
+<!-- Bump every ?v= below together on each release, so a phone never mixes old and new files. -->
+<link rel="stylesheet" href="app.css?v=8">
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
@@ -117,11 +118,22 @@
       <p class="sub">Each tutor reply shows how long it took, so you can compare these on real questions.</p>
     </section>
     <section class="card">
+      <h2>Question bank</h2>
+      <p class="sub" id="bank-note"></p>
+      <label for="repo">Private repository</label>
+      <input class="field wide" id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/name">
+      <label for="gh-token">GitHub access token</label>
+      <input class="field wide" id="gh-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+      <p class="sub">A token that can only read that one repository. It is stored on this phone and sent only to GitHub.</p>
+      <button class="btn soft" id="sync" type="button">Sync questions</button>
+      <p class="label status" id="bank-status" hidden><i></i><span id="bank-text"></span></p>
+    </section>
+    <section class="card">
       <h2>Practice history</h2>
       <p class="sub" id="history-note"></p>
       <button class="btn danger" id="erase" type="button">Erase practice history</button>
     </section>
-    <p class="label" style="text-align:center">Stage 2 · sample questions · saved on this phone only</p>
+    <p class="label" id="stage-note" style="text-align:center"></p>
   </div>
 
   <div class="view" id="session" hidden>
@@ -140,11 +152,17 @@
         <button class="timer" id="timer" type="button">Start timer</button>
       </div>
       <p class="stem" id="stem"></p>
+      <div class="walk-art" id="figure" hidden></div>
       <div class="qty" id="qty" hidden>
         <div><b>Quantity A</b><span id="qa"></span></div>
         <div><b>Quantity B</b><span id="qb"></span></div>
       </div>
+      <p class="label" id="multi-note" hidden>Select all that apply</p>
       <div class="choices" id="choices"></div>
+      <div class="num-row" id="num-row" hidden>
+        <input class="field num" id="num" type="text" inputmode="decimal" autocomplete="off" aria-label="Your answer">
+        <span id="num-unit"></span>
+      </div>
       <p class="msg" id="verdict" hidden></p>
       <button class="btn" id="check" type="button" disabled>Check my answer</button>
     </section>
@@ -158,6 +176,7 @@
       <h2>Why it works</h2>
       <ol class="steps" id="steps"></ol>
       <p class="takeaway"><b>Key idea</b><span id="takeaway"></span></p>
+      <p class="takeaway fast" id="fast" hidden><b>Faster on test day</b><span id="fast-text"></span></p>
     </section>
 
     <section class="card" id="log-card" hidden>
@@ -232,9 +251,9 @@
   </div>
 </dialog>
 
-<script src="stats.js"></script>
-<script src="questions.js"></script>
-<script src="app.js"></script>
-<script type="module" src="tutor.js"></script>
+<script src="stats.js?v=8"></script>
+<script src="questions.js?v=8"></script>
+<script src="app.js?v=8"></script>
+<script type="module" src="tutor.js?v=8"></script>
 </body>
 </html>

@@ -34,4 +34,21 @@ assert.strictEqual(S.weekTotal(days, S.monday(today)), 22);
 assert.strictEqual(S.lastDays(today, 14).length, 14);
 assert.strictEqual(S.key(S.weeks(today, 6)[0]), "2026-10-05");
 assert.strictEqual(S.streak({}, today, 5), 0);
+
+// Choosing the next question.
+var bank = [
+  { id: "p1-a", src: "p1", area: "Percents" }, { id: "p1-b", src: "p1", area: "Percents" },
+  { id: "r1-a", src: "r1", area: "Ratios" }, { id: "r1-b", src: "r1", area: "Ratios" }
+];
+var first = function () { return 0; };
+assert.strictEqual(S.pick([], [], today), null);
+assert.strictEqual(S.pick(bank, [], today, first).id, "p1-a", "nothing done: a new blueprint");
+var done1 = [{ id: "p1-a", src: "p1", area: "Percents", day: "2026-11-13", firstTry: false, hints: 3 }];
+assert.strictEqual(S.pick(bank, done1, today, first).src, "r1", "struggled today: its sibling waits, a new blueprint comes first");
+var done2 = [{ id: "p1-a", src: "p1", area: "Percents", day: "2026-11-11", firstTry: false, hints: 3 }];
+assert.strictEqual(S.pick(bank, done2, today, first).id, "p1-b", "struggled two days ago: the sibling is due");
+var done3 = [{ id: "p1-a", src: "p1", area: "Percents", day: "2026-11-11", firstTry: true, hints: 0 }];
+assert.strictEqual(S.pick(bank, done3, today, first).src, "r1", "solved cleanly: no early repeat");
+var all = bank.map(function (q, i) { return { id: q.id, src: q.src, area: q.area, day: "2026-11-1" + i, firstTry: true, hints: 0 }; });
+assert.strictEqual(S.pick(bank, all, today, first).id, "p1-a", "everything done: the oldest comes round again");
 console.log("all checks passed");

@@ -4,7 +4,7 @@
   var STILL = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var RING = 263.9;
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  var TYPES = { qc: "Quantitative comparison", mc: "Multiple choice" };
+  var TYPES = { qc: "Quantitative comparison", mc: "Multiple choice", ms: "Select all that apply", num: "Numeric entry" };
   var LETTERS = "ABCDEFGH";
 
   // shortcut: progress lives only in this phone's browser storage; stage 4 adds the realtime backup to the private repo.
@@ -41,6 +41,13 @@
   var apiKey = load("44d.key", "");
   if (typeof apiKey !== "string") apiKey = "";
   var turns = [], system = "", running = false, ctl = null, photoFile = null;
+  // The question bank is fetched from the owner's private GitHub repo with a read-only token and kept on this phone.
+  var ghToken = load("44d.gh", "");
+  if (typeof ghToken !== "string") ghToken = "";
+  var bank = load("44d.bank", null);
+  if (!bank || !Array.isArray(bank.questions) || !bank.questions.length) bank = null;
+  if (typeof settings.repo !== "string" || !settings.repo) settings.repo = "ndsayes/gre-mock-data";
+  var picks = [];
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -145,6 +152,10 @@
       ? plural(log.length, "question") + " logged on this phone. Erasing clears your streak, chart and log."
       : "Nothing logged yet.";
     $("erase").disabled = !log.length;
+    $("bank-note").textContent = bank
+      ? plural(bank.questions.length, "question") + " on this phone, last synced " + new Date(bank.syncedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "."
+      : "Not connected yet. Until then the app uses its five built-in sample questions.";
+    $("stage-note").textContent = (bank ? plural(bank.questions.length, "question") + " in your bank" : "sample questions") + " · progress saved on this phone only";
 
     var hasKey = !!apiKey;
     $("chat-on").hidden = !hasKey;
@@ -154,33 +165,56 @@
 
   // ---------- question ----------
   function openQuestion() {
-    // shortcut: cycles through the five samples in order; the question bank and spaced repeats arrive in stage 3.
-    q = QUESTIONS[log.length % QUESTIONS.length];
-    shown = 0; picked = -1; solved = false; answers = [];
+    // Questions come from the private bank once it has been synced; until then, the five built-in samples.
+    q = Stats.pick(bank ? bank.questions : QUESTIONS, log, new Date()) || QUESTIONS[0];
+    shown = 0; picked = -1; picks = []; solved = false; answers = [];
     clearInterval(tick);
     startedAt = 0;
     shownAt = Date.now();
 
     $("q-label").textContent = q.area + " · " + TYPES[q.type];
-    $("stem").textContent = q.stem;
+    $("stem").textContent = q.stem || "";
+    $("stem").hidden = !q.stem;
+    var fig = q.figure ? cleanSvg(q.figure) : null;
+    $("figure").textContent = "";
+    if (fig) {
+      if (q.figdesc) fig.setAttribute("aria-label", q.figdesc);
+      $("figure").appendChild(fig);
+    }
+    $("figure").hidden = !fig;
     $("qty").hidden = q.type !== "qc";
     $("qa").textContent = q.qa || "";
     $("qb").textContent = q.qb || "";
     var box = $("choices");
     box.textContent = "";
-    q.choices.forEach(function (text, i) {
+    box.hidden = q.type === "num";
+    choicesOf(q).forEach(function (text, i) {
       var b = el("button", "choice", text);
       b.type = "button";
       b.setAttribute("aria-pressed", "false");
       b.addEventListener("click", function () {
         if (solved) return;
-        picked = i;
-        Array.prototype.forEach.call(box.children, function (o, j) { o.setAttribute("aria-pressed", j === i ? "true" : "false"); });
-        $("check").disabled = false;
+        if (q.type === "ms") { // any number of choices can be on
+          var on = b.getAttribute("aria-pressed") !== "true";
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+          picks = picks.filter(function (p) { return p !== i; });
+          if (on) picks.push(i);
+          picks.sort(function (x, y) { return x - y; });
+          $("check").disabled = !picks.length;
+        } else {
+          picked = i;
+          Array.prototype.forEach.call(box.children, function (o, j) { o.setAttribute("aria-pressed", j === i ? "true" : "false"); });
+          $("check").disabled = false;
+        }
         $("verdict").hidden = true;
       });
       box.appendChild(b);
     });
+    $("multi-note").hidden = q.type !== "ms";
+    $("num-row").hidden = q.type !== "num";
+    $("num").value = "";
+    $("num").disabled = false;
+    $("num-unit").textContent = q.unit || "";
     $("verdict").hidden = true;
     $("check").hidden = false;
     $("check").disabled = true;
@@ -220,6 +254,7 @@
     clearInterval(tick);
     var row = {
       id: q.id,
+      src: q.src || q.id,
       at: today.toISOString(),
       day: Stats.key(today),
       target: settings.target,
@@ -242,8 +277,9 @@
     }
     Array.prototype.forEach.call($("choices").children, function (o, j) {
       o.disabled = true;
-      if (j === q.answer) o.classList.add("right");
+      if (q.type === "ms" ? q.answer.indexOf(j) >= 0 : j === q.answer) o.classList.add("right");
     });
+    $("num").disabled = true;
     $("check").hidden = true;
     $("hint-card").hidden = true;
     $("dock-work").hidden = true;
@@ -252,6 +288,8 @@
     steps.textContent = "";
     q.steps.forEach(function (s) { steps.appendChild(el("li", "", s)); });
     $("takeaway").textContent = q.takeaway;
+    $("fast").hidden = !q.fast;
+    $("fast-text").textContent = q.fast || "";
     $("walk").hidden = false;
 
     $("log-area").textContent = row.area;
@@ -266,18 +304,55 @@
     render();
   }
 
+  function choicesOf(q) { return q.type === "qc" ? QC_CHOICES : (q.choices || []); }
+  // Reads a typed answer: 12, 0.4, 1,250 or a fraction such as 3/8. Returns null if it is not a number.
+  function parseNum(text) {
+    var s = String(text).replace(/[\s,$%]/g, ""), parts = s.split("/");
+    if (!s || parts.length > 2) return null;
+    var n = Number(parts[0]), d = parts.length === 2 ? Number(parts[1]) : 1;
+    if (parts[0] === "" || parts[parts.length - 1] === "" || !isFinite(n) || !isFinite(d) || d === 0) return null;
+    return n / d;
+  }
+  function near(a, b) { return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b)); }
+
+  $("num").addEventListener("input", function () {
+    $("check").disabled = !this.value.trim();
+    $("verdict").hidden = true;
+  });
   $("check").addEventListener("click", function () {
-    if (picked < 0 || solved) return;
-    var v = $("verdict");
+    if (solved) return;
+    var v = $("verdict"), right, said, trap = "";
+    if (q.type === "ms") {
+      if (!picks.length) return;
+      said = picks.map(function (p) { return LETTERS.charAt(p); }).join("+");
+      right = picks.join(",") === q.answer.join(",");
+      trap = "Not yet. Test each choice on its own: one of your picks does not fit, or one that fits is missing.";
+    } else if (q.type === "num") {
+      var n = parseNum($("num").value);
+      if (n === null) {
+        v.hidden = false;
+        v.className = "msg bad";
+        v.textContent = "Enter a number, such as 12, 0.4 or 3/8.";
+        return;
+      }
+      said = $("num").value.trim();
+      right = near(n, q.answer);
+      (Array.isArray(q.traps) ? q.traps : []).forEach(function (t) { if (near(n, t.value)) trap = t.msg; });
+    } else {
+      if (picked < 0) return;
+      said = LETTERS.charAt(picked);
+      right = picked === q.answer;
+      trap = q.traps && q.traps[picked];
+    }
     v.hidden = false;
-    answers.push(LETTERS.charAt(picked));
-    if (picked === q.answer) {
+    answers.push(said);
+    if (right) {
       v.className = "msg good";
       v.textContent = "Correct.";
       finish();
     } else {
       v.className = "msg bad";
-      v.textContent = (q.traps && q.traps[picked]) || "Not yet. Try a hint, then have another go.";
+      v.textContent = trap || "Not yet. Try a hint, then have another go.";
     }
   });
 
@@ -323,14 +398,22 @@
       "<question>",
       "Area: " + q.area,
       "Type: " + TYPES[q.type],
-      q.stem
+      q.stem || ""
     ];
+    var list = choicesOf(q), right;
+    if (q.figure) lines.push("Figure shown to the student: " + (q.figdesc || "see the markup"), "Figure markup (SVG): " + q.figure);
     if (q.type === "qc") lines.push("Quantity A: " + q.qa, "Quantity B: " + q.qb);
-    q.choices.forEach(function (c, i) { lines.push(LETTERS.charAt(i) + ". " + c); });
+    list.forEach(function (c, i) { lines.push(LETTERS.charAt(i) + ". " + c); });
+    if (q.type === "ms") lines.push("The student selects every choice that applies.");
+    if (q.type === "num") lines.push("The student types a number into a box" + (q.unit ? " followed by the word " + q.unit : "") + ". There are no answer choices.");
+    if (q.type === "ms") right = "Correct choices: " + q.answer.map(function (a) { return LETTERS.charAt(a) + ". " + list[a]; }).join("; ");
+    else if (q.type === "num") right = "Correct answer: " + q.answer + (q.unit ? " " + q.unit : "");
+    else right = "Correct choice: " + LETTERS.charAt(q.answer) + ". " + list[q.answer];
     lines.push("</question>", "", "<hints>");
     q.hints.forEach(function (h, i) { lines.push((i + 1) + ". " + h); });
-    lines.push("</hints>", "", "<checked_solution>", "Correct choice: " + LETTERS.charAt(q.answer) + ". " + q.choices[q.answer]);
+    lines.push("</hints>", "", "<checked_solution>", right);
     q.steps.forEach(function (s) { lines.push("- " + s); });
+    if (q.fast) lines.push("Faster route: " + q.fast);
     lines.push(
       "Key idea: " + q.takeaway,
       "</checked_solution>",
@@ -352,6 +435,14 @@
       "9. Do exactly what you say. If the text says average, the picture and the formula show the add and the divide.",
       "10. When something is a convention or a choice, name the obvious alternative and show on the same numbers why it falls short.",
       "Words like clearly, simply and obviously mark a skipped step, so leave them out. Answer the exact question they asked, however basic: they are relearning this and chose to ask.",
+      "",
+      "Test-day habits. These come second: understanding first, speed after. Bring one in only when it fits this question's type and the idea itself has landed, as the faster route for next time.",
+      "- Comparisons: when both quantities are plain numbers, the relationship can always be determined. To show it cannot be determined, two cases with different outcomes are enough, so test different kinds of number: negative, zero, a fraction between 0 and 1, 1, something large.",
+      "- Comparisons: compare rather than compute. Do the same thing to both quantities, or compare them piece by piece.",
+      "- An unknown total with percents or fractions: call it 100, or a multiple of the denominators. Variables in the answer choices: pick small numbers and test the choices.",
+      "- Numbers in the choices and one value asked for: work backwards from a middle choice, which also shows which way to move.",
+      "- Select-all questions: judge each choice on its own. Numeric entry: no choices will catch a slip, so reread what is asked and the units before answering.",
+      "- Charts: read the title, axes, units and key before the question, then estimate. A percent change in an amount is not a change in percentage points. Geometry figures are not drawn to scale; charts and coordinate grids are.",
       "",
       "There are two kinds of reply. Choose the one that fits.",
       "A. Quick reply, for a small specific question. Write 2 to 4 short plain sentences and end with one small question that moves them forward.",
@@ -704,6 +795,9 @@
     $("name").value = settings.name;
     $("key").value = apiKey;
     $("tutor-mode").value = settings.tutor;
+    $("repo").value = settings.repo;
+    $("gh-token").value = ghToken;
+    $("bank-status").hidden = true;
     $("key-status").hidden = true;
     show("settings");
   }
@@ -738,6 +832,55 @@
     $("key-status").hidden = true;
     render();
   });
+  // ---------- question bank ----------
+  // Reads bank.json from the private repo. The token is sent only to api.github.com.
+  function syncBank(done) {
+    if (!ghToken) { done(false, "Paste your GitHub token first"); return; }
+    fetch("https://api.github.com/repos/" + settings.repo + "/contents/bank.json", {
+      headers: { Authorization: "Bearer " + ghToken, Accept: "application/vnd.github.raw+json", "X-GitHub-Api-Version": "2022-11-28" },
+      cache: "no-store"
+    }).then(function (r) {
+      if (r.status === 401) throw new Error("GitHub did not accept the token");
+      if (r.status === 403 || r.status === 404) throw new Error("This token cannot read " + settings.repo);
+      if (!r.ok) throw new Error("GitHub answered with an error (" + r.status + ")");
+      return r.json();
+    }).then(function (data) {
+      var good = (data && Array.isArray(data.questions) ? data.questions : []).filter(function (x) {
+        return x && x.id && TYPES[x.type] && Array.isArray(x.hints) && Array.isArray(x.steps) && x.answer != null;
+      });
+      if (!good.length) throw new Error("The question bank is empty");
+      bank = { questions: good, syncedAt: new Date().toISOString() };
+      var kept = save("44d.bank", bank);
+      done(true, plural(good.length, "question") + " synced" + (kept ? "" : ", but too large to keep offline"));
+    }).catch(function (e) {
+      done(false, e instanceof TypeError ? "No connection to GitHub" : e.message);
+    });
+  }
+  $("repo").addEventListener("input", function () {
+    settings.repo = this.value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/+$/, "");
+    save("44d.settings", settings);
+  });
+  $("gh-token").addEventListener("input", function () {
+    ghToken = this.value.trim();
+    save("44d.gh", ghToken);
+    $("bank-status").hidden = true;
+  });
+  $("sync").addEventListener("click", function () {
+    var btn = this, st = $("bank-status");
+    function say(ok, text) {
+      st.hidden = false;
+      st.className = "label status" + (ok ? "" : " warn");
+      $("bank-text").textContent = text;
+    }
+    btn.disabled = true;
+    say(true, "Syncing…");
+    syncBank(function (ok, text) {
+      say(ok, text);
+      btn.disabled = false;
+      render();
+    });
+  });
+
   $("tutor-mode").addEventListener("change", function () {
     if (PRESETS[this.value]) settings.tutor = this.value;
     save("44d.settings", settings);
@@ -828,4 +971,6 @@
 
   render();
   introTimer = setTimeout(function () { $("home").classList.remove("intro"); }, 1500);
+  // Pick up new questions quietly when the app opens, at most every six hours.
+  if (ghToken && (!bank || Date.now() - Date.parse(bank.syncedAt) > 6 * 3600 * 1000)) syncBank(function () { render(); });
 })();

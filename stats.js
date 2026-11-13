@@ -48,6 +48,41 @@ var Stats = (function () {
     }
     return sum;
   }
-  return { key: key, addDays: addDays, monday: monday, byDay: byDay, share: share, streak: streak, lastDays: lastDays, weeks: weeks, weekTotal: weekTotal };
+  // Chooses the next question from the bank. Each question has an id and a src (its blueprint); the two
+  // variants of a blueprint share a src. Order of preference among questions not yet done:
+  //   0. the sibling of one the learner struggled with (wrong first try, or 2+ hints), once 2 days have passed;
+  //   1. a blueprint never seen before;
+  //   2. anything else.
+  // Within a tier it avoids repeating the previous question's area. When everything is done, the one done
+  // longest ago comes round again.
+  function pick(bank, log, today, rand) {
+    if (!bank || !bank.length) return null;
+    rand = rand || Math.random;
+    var doneAt = {}, seen = {}, struggled = {};
+    log.forEach(function (row, i) {
+      var src = row.src || row.id;
+      doneAt[row.id] = i;
+      seen[src] = true;
+      if (!row.firstTry || row.hints >= 2) struggled[src] = row.day;
+    });
+    var fresh = bank.filter(function (q) { return !(q.id in doneAt); });
+    if (!fresh.length) return bank.slice().sort(function (a, b) { return doneAt[a.id] - doneAt[b.id]; })[0];
+    function age(day) {
+      var p = String(day).split("-");
+      return Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - new Date(+p[0], p[1] - 1, +p[2])) / 86400000);
+    }
+    function tier(q) {
+      var src = q.src || q.id;
+      if (struggled[src] && age(struggled[src]) >= 2) return 0;
+      return seen[src] ? 2 : 1;
+    }
+    var best = Math.min.apply(null, fresh.map(tier));
+    var pool = fresh.filter(function (q) { return tier(q) === best; });
+    var lastArea = log.length ? log[log.length - 1].area : null;
+    var other = pool.filter(function (q) { return q.area !== lastArea; });
+    if (other.length) pool = other;
+    return pool[Math.floor(rand() * pool.length)];
+  }
+  return { key: key, addDays: addDays, monday: monday, byDay: byDay, share: share, streak: streak, lastDays: lastDays, weeks: weeks, weekTotal: weekTotal, pick: pick };
 })();
 if (typeof module !== "undefined") module.exports = Stats;
