@@ -26,7 +26,9 @@
 
   var settings = load("44d.settings", {});
   if (!settings || typeof settings !== "object") settings = {};
-  if (!PRESETS[settings.tutor]) settings.tutor = "opus-medium";
+  // Fast mode became the default on 2026-11-14; move earlier installs onto it once, then respect any later choice.
+  if (!PRESETS[settings.tutor] || !settings.fastDefault) settings.tutor = "opus-fast";
+  settings.fastDefault = true;
   settings.target = clampTarget(settings.target);
   if (typeof settings.name !== "string") settings.name = "ND";
   var log = load("44d.log", []);
@@ -77,18 +79,24 @@
     }
     $("streak-n").textContent = Stats.streak(days, today, target);
 
-    var strip = $("strip");
+    var strip = $("strip"), WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     strip.textContent = "";
-    Stats.lastDays(today, 14).forEach(function (date, i) {
-      var k = Stats.key(date), share = Stats.share(days, k, target, tk);
-      var cell = el("span", "cell" + (k === tk ? " today" : ""));
+    Stats.lastDays(today, 5).forEach(function (date, i) {
+      var k = Stats.key(date), share = Stats.share(days, k, target, tk), isToday = k === tk;
+      if (i) strip.appendChild(el("span", "join"));
+      var block = el("div", "dayblock"), cell = el("span", "cell");
       if (share > 0) {
         var fill = el("i");
         fill.style.opacity = share >= 1 ? 1 : (0.25 + 0.5 * share).toFixed(2);
         cell.appendChild(fill);
       }
       cell.style.setProperty("--i", i);
-      strip.appendChild(cell);
+      block.appendChild(cell);
+      var cap = el("span", "cap" + (isToday ? " now" : ""));
+      if (isToday) cap.appendChild(el("i", "pointer"));
+      cap.appendChild(document.createTextNode(isToday ? "Today" : WEEKDAYS[date.getDay()]));
+      block.appendChild(cap);
+      strip.appendChild(block);
     });
 
     var cal = $("cal");

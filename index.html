@@ -26,35 +26,30 @@
 <div class="app">
   <div class="view intro" id="home">
     <header class="rise" style="--i:0">
-      <div>
-        <h1>44 Days</h1>
-        <p class="label">GRE quant practice</p>
-      </div>
+      <h1 class="plain hello" id="hello">Welcome</h1>
       <button class="icon-btn" id="open-settings" type="button" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.6"/><circle cx="8" cy="17" r="2.6"/></svg>
       </button>
     </header>
 
-    <section class="card rise" style="--i:1">
-      <div class="hero-top">
-        <div>
-          <p class="label" id="hello">Welcome</p>
-          <p class="left" id="left"></p>
-        </div>
-        <div class="ring" id="ring-box" role="img">
-          <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="42"/><circle class="prog" id="ring" cx="50" cy="50" r="42"/></svg>
-          <div class="ring-n"><span><b id="ring-done">0</b>/<span id="ring-target">5</span></span></div>
-        </div>
+    <section class="card rise start-card" style="--i:1">
+      <div class="start-left">
+        <p class="label">Today</p>
+        <p class="left" id="left"></p>
+        <button class="btn" id="start" type="button">Start session</button>
       </div>
-      <button class="btn" id="start" type="button">Start session</button>
+      <div class="ring" id="ring-box" role="img">
+        <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="42"/><circle class="prog" id="ring" cx="50" cy="50" r="42"/></svg>
+        <div class="ring-n"><span><b id="ring-done">0</b>/<span id="ring-target">5</span></span></div>
+      </div>
     </section>
 
     <section class="card rise" style="--i:2">
       <div class="card-head">
         <div class="big"><b id="streak-n">0</b><span>day streak</span></div>
-        <p class="label">Last 14 days</p>
+        <p class="label">Last 5 days</p>
       </div>
-      <div class="strip" id="strip" role="img" aria-label="Your last 14 days. Brighter blue means closer to your target, grey means missed."></div>
+      <div class="strip" id="strip" role="img" aria-label="Your last 5 days. Brighter blue means closer to your target, grey means missed."></div>
       <div class="strip-foot">
         <div class="scale"><span>Missed</span><div class="ramp" aria-hidden="true"><i class="miss"></i><i style="opacity:.4"></i><i style="opacity:.65"></i><i></i></div><span>Target hit</span></div>
         <button class="toggle" id="cal-toggle" type="button" aria-expanded="false" aria-controls="cal-wrap">Show calendar</button>
@@ -114,8 +109,8 @@
       <p class="label status" id="key-status" hidden><i></i><span id="key-text"></span></p>
       <label for="tutor-mode">Speed and quality</label>
       <select class="field wide" id="tutor-mode">
-        <option value="opus-medium">Opus, medium effort</option>
         <option value="opus-fast">Opus, medium effort, fast mode (about 2× the price)</option>
+        <option value="opus-medium">Opus, medium effort</option>
         <option value="sonnet-high">Sonnet, high effort</option>
         <option value="opus-low">Opus, low effort</option>
       </select>
