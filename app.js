@@ -187,7 +187,14 @@
     $("photo").value = "";
     $("thumb").hidden = true;
     $("work-reply").hidden = true;
-    $("work-card").hidden = false;
+    $("dock-work").hidden = false;
+    $("dot").hidden = true;
+    closeSheets();
+    var peek = q.stem + (q.type === "qc" ? " Quantity A: " + q.qa + ". Quantity B: " + q.qb + "." : "");
+    Array.prototype.forEach.call(document.querySelectorAll(".peek"), function (p) {
+      p.textContent = peek;
+      p.classList.remove("open");
+    });
   }
 
   function finish() {
@@ -222,7 +229,7 @@
     });
     $("check").hidden = true;
     $("hint-card").hidden = true;
-    $("work-card").hidden = true;
+    $("dock-work").hidden = true;
 
     var steps = $("steps");
     steps.textContent = "";
@@ -509,7 +516,12 @@
       var kept = out.textContent === "Thinking…" ? "" : out.textContent;
       out.textContent = info.cancelled ? (kept || "Stopped.") : (kept ? kept + "\n\n" : "") + info.text;
       fail();
-    }).then(function () { setBusy(false); view(box); });
+    }).then(function () {
+      setBusy(false);
+      view(box);
+      // A reply that lands while the tutor panel is closed gets a dot on the Ask tutor button.
+      if (box.parentNode === $("thread") && !$("tutor-sheet").open) $("dot").hidden = false;
+    });
   }
   // shortcut: the whole conversation for a question is resent each turn; fine for a short chat, trim if chats get long.
   function chat(shownText, sentText) {
@@ -526,6 +538,7 @@
     }, function () { mine.pop(); });
   }
   function why(i) {
+    openSheet("tutor-sheet");
     if (i < 0) chat("But why?", "But why? I have not opened a hint yet, and I do not know where to start. Walk me through the idea this question rests on.");
     else chat("But why? (hint " + (i + 1) + ")", "Why does hint " + (i + 1) + " ask me to think this way? Walk me through the idea behind it.");
   }
@@ -614,8 +627,51 @@
     clearTimeout(introTimer);
     introTimer = setTimeout(function () { h.classList.remove("intro"); }, 1500);
   }
+  // ---------- pop-up panels for the tutor and Show your work ----------
+  function openSheet(id) {
+    var d = $(id);
+    if (d.open) return;
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    document.documentElement.classList.add("locked");
+    if (id === "tutor-sheet") {
+      $("dot").hidden = true;
+      var last = $("thread").lastElementChild;
+      if (last) last.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function closeSheets() {
+    ["tutor-sheet", "work-sheet"].forEach(function (id) {
+      var d = $(id);
+      if (!d.open) return;
+      if (d.close) d.close(); else d.removeAttribute("open");
+    });
+    document.documentElement.classList.remove("locked");
+  }
+  ["tutor-sheet", "work-sheet"].forEach(function (id) {
+    var d = $(id);
+    d.addEventListener("close", function () { document.documentElement.classList.remove("locked"); });
+    d.addEventListener("click", function (e) { if (e.target === d) closeSheets(); }); // a tap on the dimmed area
+    d.querySelector(".sheet-close").addEventListener("click", closeSheets);
+    d.querySelector(".peek").addEventListener("click", function () { this.classList.toggle("open"); });
+  });
+  $("dock-tutor").addEventListener("click", function () { openSheet("tutor-sheet"); });
+  $("dock-work").addEventListener("click", function () { openSheet("work-sheet"); });
+  // Keep the panel above the on-screen keyboard: size it to the part of the screen that is actually visible.
+  if (window.visualViewport) {
+    var vv = window.visualViewport, root = document.documentElement;
+    var fit = function () {
+      root.style.setProperty("--vvh", vv.height + "px");
+      root.style.setProperty("--vvb", Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + "px");
+    };
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    fit();
+  }
+
   function show(name) {
     ["home", "settings", "session"].forEach(function (v) { $(v).hidden = v !== name; });
+    closeSheets();
+    $("dock").hidden = name !== "session";
     keepAwake(name === "session");
     if (name === "home") { render(); intro(); }
     window.scrollTo(0, 0);
@@ -632,7 +688,9 @@
     show("settings");
   }
   $("open-settings").addEventListener("click", openSettings);
-  Array.prototype.forEach.call(document.querySelectorAll(".need-key"), function (b) { b.addEventListener("click", openSettings); });
+  Array.prototype.forEach.call(document.querySelectorAll(".need-key"), function (b) {
+    b.addEventListener("click", function () { closeSheets(); openSettings(); });
+  });
   $("close-settings").addEventListener("click", function () { show("home"); });
   $("cal-toggle").addEventListener("click", function () {
     var open = $("cal-wrap").hidden;

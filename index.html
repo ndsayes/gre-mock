@@ -157,42 +157,6 @@
       <p class="takeaway"><b>Key idea</b><span id="takeaway"></span></p>
     </section>
 
-    <section class="card" id="chat-card">
-      <h2>Ask the tutor</h2>
-      <p class="sub">No question is too basic. Ask anything and the tutor answers for this exact problem, without giving the answer.</p>
-      <div class="thread" id="thread" aria-live="polite"></div>
-      <div id="chat-on">
-        <div class="chips">
-          <button class="chip" type="button" data-q="why">But why?</button>
-          <button class="chip" type="button" data-q="simple">Explain it simpler</button>
-          <button class="chip" type="button" data-q="pic">Walk me through the idea</button>
-        </div>
-        <div class="ask-row">
-          <textarea id="ask" rows="1" placeholder="But why does…" aria-label="Your question for the tutor"></textarea>
-          <button class="btn" id="send" type="button">Send</button>
-        </div>
-      </div>
-      <button class="btn soft need-key" type="button" hidden>Add your API key in Settings to turn on the tutor</button>
-    </section>
-
-    <section class="card" id="work-card">
-      <h2>Show your work</h2>
-      <p class="sub">Snap your paper or say what you tried. The tutor points to the first step that goes off track, without giving the answer.</p>
-      <div id="work-on">
-        <div class="work-row">
-          <label class="btn soft" for="photo">Take a photo
-            <input id="photo" type="file" accept="image/*" capture="environment">
-          </label>
-          <button class="btn soft" id="speak" type="button">Speak</button>
-        </div>
-        <img id="thumb" alt="Your photo of your working" hidden>
-        <textarea id="work" placeholder="I started with…" aria-label="What you tried"></textarea>
-        <button class="btn" id="work-send" type="button">Check my work</button>
-        <div class="bubble tutor" id="work-reply" hidden><b>Tutor</b><span class="t"></span></div>
-      </div>
-      <button class="btn soft need-key" type="button" hidden>Add your API key in Settings to turn on the tutor</button>
-    </section>
-
     <section class="card" id="log-card" hidden>
       <h2>Saved to your log</h2>
       <dl class="log">
@@ -207,7 +171,63 @@
       <button class="btn" id="next" type="button">Next question</button>
     </section>
   </div>
+
+  <!-- Pinned at the bottom of the question screen; each button slides a panel up over it. -->
+  <div class="dock" id="dock" hidden>
+    <div class="dock-in">
+      <button class="btn" id="dock-tutor" type="button">Ask tutor<i class="dot-new" id="dot" hidden></i></button>
+      <button class="btn" id="dock-work" type="button">Show work</button>
+    </div>
+  </div>
 </div>
+
+<dialog class="sheet" id="tutor-sheet" aria-labelledby="tutor-title">
+  <div class="sheet-head">
+    <h2 id="tutor-title">Ask the tutor</h2>
+    <button class="link sheet-close" type="button">Close</button>
+  </div>
+  <button class="peek" type="button" aria-label="The question. Tap to show all of it."></button>
+  <div class="sheet-body">
+    <p class="sub">No question is too basic. Ask anything and the tutor answers for this exact problem, without giving the answer.</p>
+    <div class="thread" id="thread" aria-live="polite"></div>
+    <button class="btn soft need-key" type="button" hidden>Add your API key in Settings to turn on the tutor</button>
+  </div>
+  <div class="sheet-foot" id="chat-on">
+    <div class="chips">
+      <button class="chip" type="button" data-q="why">But why?</button>
+      <button class="chip" type="button" data-q="simple">Explain it simpler</button>
+      <button class="chip" type="button" data-q="pic">Walk me through the idea</button>
+    </div>
+    <div class="ask-row">
+      <textarea id="ask" rows="1" placeholder="But why does…" aria-label="Your question for the tutor"></textarea>
+      <button class="btn" id="send" type="button">Send</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="work-sheet" aria-labelledby="work-title">
+  <div class="sheet-head">
+    <h2 id="work-title">Show your work</h2>
+    <button class="link sheet-close" type="button">Close</button>
+  </div>
+  <button class="peek" type="button" aria-label="The question. Tap to show all of it."></button>
+  <div class="sheet-body">
+    <p class="sub">Snap your paper or say what you tried. The tutor points to the first step that goes off track, without giving the answer.</p>
+    <div id="work-on">
+      <div class="work-row">
+        <label class="btn soft" for="photo">Take a photo
+          <input id="photo" type="file" accept="image/*" capture="environment">
+        </label>
+        <button class="btn soft" id="speak" type="button">Speak</button>
+      </div>
+      <img id="thumb" alt="Your photo of your working" hidden>
+      <textarea id="work" placeholder="I started with…" aria-label="What you tried"></textarea>
+      <button class="btn" id="work-send" type="button">Check my work</button>
+      <div class="bubble tutor" id="work-reply" hidden><b>Tutor</b><span class="t"></span></div>
+    </div>
+    <button class="btn soft need-key" type="button" hidden>Add your API key in Settings to turn on the tutor</button>
+  </div>
+</dialog>
 
 <script src="stats.js"></script>
 <script src="questions.js"></script>
