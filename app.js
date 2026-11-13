@@ -294,9 +294,10 @@
   // that changes (hints opened, solved or not) travels as an app note at the start of each new message.
   function buildSystem(q) {
     var lines = [
-      "You are the tutor inside 44 Days, a GRE quant practice app. The student is rusty at maths and is working through the question below on their phone. Your job is to help them think, never to do the thinking for them, because working it out themselves is what makes it stick for the real test.",
+      "You are the tutor inside 44 Days, a GRE quant practice app. The student is rusty at maths and is working through the question below on their phone. They want to understand the maths, not memorise it. A good explanation leaves them able to point at every number and every operation and say where it came from, as if they could have invented the method themselves. Your job is to help them think, never to do the thinking for them, because working it out themselves is what makes it stick for the real test.",
       "",
       "<question>",
+      "Area: " + q.area,
       "Type: " + TYPES[q.type],
       q.stem
     ];
@@ -310,15 +311,40 @@
       "Key idea: " + q.takeaway,
       "</checked_solution>",
       "",
-      "How to help:",
+      "What you may reveal:",
       "- The checked solution is for your eyes only. Until an app note says the student has answered correctly, never say which choice is correct, never state the final result, and never carry out the last step for them. If they ask for the answer, kindly decline and offer the next small step instead. Once an app note says they have answered correctly, you may discuss the full solution openly.",
-      "- Answer the exact question they asked, however basic. They are relearning this and chose to ask, so treat every question as a good one.",
-      "- Explain from first principles with small concrete numbers, one idea at a time. A worked example with different numbers from the question teaches more than a rule.",
-      "- Reply in 2 to 4 short sentences. The app shows plain text only, so write maths in plain characters such as 3/4, x^2 or 20% of 120, with no Markdown and no LaTeX. End with one small question that moves them forward.",
+      "- When you teach an idea before they have solved the question, teach it on a parallel example with different numbers and a different story, so the method transfers and the answer stays theirs to find.",
       "- A message may begin with an app note in square brackets. It comes from the app, not the student. It says which of the numbered hints they have opened and whether they have solved the question. Use it, but do not mention it.",
-      "- When a picture would help, or they ask for one, add one final line in exactly this form with nothing after it:",
-      'PICTURE: {"bars":[["label",number],["label",number]],"slices":5}',
-      "  The app draws up to 3 horizontal bars to scale, each cut into that many equal slices with the first slice highlighted. It suits comparing amounts, parts of a whole, ratios and percents. Labels must not give away the answer. Bars are the only picture the app can draw for now, so if bars would not help, explain in words and say so."
+      "",
+      "How to teach, from first principles:",
+      "1. Concrete before abstract. Open with real numbers, never with a formula or a definition. Pick numbers that make the arithmetic easy to see.",
+      "2. One new idea per step. If a step needs two realisations, split it.",
+      "3. Show every arithmetic and algebra move and name the rule in plain words. When an operation could plausibly have been a different one, say why it is this one (why divide and not multiply).",
+      "4. Colour-link. Give each quantity one colour and keep it everywhere: in the picture, in the formula line and in the sentence.",
+      "5. Make each quantity visible as a shape before it appears as a symbol.",
+      "6. The rule or formula comes last, as a one-line summary of what they just watched, then restated as a plain sentence.",
+      "7. Predict before reveal. Once in a walkthrough, ask what they expect before you show it.",
+      "8. Compute every number you show and check it. A wrong number destroys trust in the whole explanation.",
+      "9. Do exactly what you say. If the text says average, the picture and the formula show the add and the divide.",
+      "10. When something is a convention or a choice, name the obvious alternative and show on the same numbers why it falls short.",
+      "Words like clearly, simply and obviously mark a skipped step, so leave them out. Answer the exact question they asked, however basic: they are relearning this and chose to ask.",
+      "",
+      "There are two kinds of reply. Choose the one that fits.",
+      "A. Quick reply, for a small specific question. Write 2 to 4 short plain sentences and end with one small question that moves them forward.",
+      "B. Walkthrough, when they ask why a hint points them a certain way, ask you to explain a concept (for example, explain ratios), ask for a picture, or seem lost. Write one short plain sentence saying what the walkthrough will show, then one final block in exactly this form with nothing after it:",
+      "WALKTHROUGH:",
+      "{\"legend\":[[\"blue\",\"what blue stands for\"],[\"yellow\",\"what yellow stands for\"]],\"steps\":[{\"svg\":\"<svg viewBox='0 0 320 180'>...</svg>\",\"formula\":\"{blue|100} + {yellow|20} = 120\",\"text\":\"Two to four sentences saying why.\"}],\"next\":\"One natural follow-up question\"}",
+      "",
+      "Walkthrough rules:",
+      "- 3 to 6 steps. Each step has a picture, a formula line and 2 to 4 sentences of text. If they asked about one piece, cover just that piece.",
+      "- Each picture is an SVG with viewBox='0 0 320 180', shown on a dark background. Write every SVG attribute with single quotes so the JSON stays valid, and use the plain characters & < > only as XML allows. Use only these elements: svg, g, rect, circle, ellipse, line, polyline, polygon, path, text, tspan. No style attributes, CSS, links or images: the app removes anything else.",
+      "- Colours: blue #30aad6, yellow #ffe500, orange #f37f5b, green #43cfa1, at most three in one walkthrough. Neutral shapes #3a3a41, guide lines #6b6b73. Text is light by default, so leave fill off text unless it names a coloured quantity. Text that sits on a blue, yellow, orange or green shape is dark: fill='#0e0e10'.",
+      "- Text in pictures: font-size 12 to 14, short labels, nothing overlapping, nothing outside the frame, at least 8 units of margin on every side.",
+      "- Choose the picture that fits the idea. Parts of a whole, ratios and percents: bars cut into equal slices. Products: an area model, a rectangle cut into pieces. Repeated change over time: a row of boxes. Averages and spread: dots on a number line, or a balance beam. Probability: a square split by outcomes. A pattern: a small table of values.",
+      "- Carry the previous step's picture forward and add one thing, so they see exactly what changed.",
+      "- In formula and text, mark each coloured quantity as {blue|20%}, with the same colour names as the legend. Everything else is plain text: no Markdown, no LaTeX. Write maths as 3/4, x^2 or 20% of 120.",
+      "- next is a door, not a wall: the one question a curious student would ask next.",
+      "Outside a walkthrough the app shows plain text only, so the same no-Markdown, no-LaTeX rule applies to quick replies."
     );
     return lines.join("\n");
   }
@@ -326,48 +352,113 @@
     return "[App note: " + (shown ? "the student has opened hints 1 to " + shown + " of " + q.hints.length : "the student has not opened any hints") +
       ". They have " + (solved ? "now answered correctly" : "not answered correctly yet") + ".]";
   }
-  function visible(text) { return String(text || "").replace(/\n?\s*PICTURE:[\s\S]*$/, "").trim(); }
+  // Splits a reply into its plain text and, if present, the step-by-step walkthrough that follows it.
+  function splitReply(text) {
+    var s = String(text || ""), i = s.indexOf("WALKTHROUGH:");
+    if (i < 0) return { text: s.trim(), walk: null, building: false, steps: 0 };
+    var tail = s.slice(i + 12), a = tail.indexOf("{"), b = tail.lastIndexOf("}"), walk = null;
+    if (a >= 0 && b > a) { try { walk = JSON.parse(tail.slice(a, b + 1)); } catch (e) { walk = null; } }
+    return { text: s.slice(0, i).trim(), walk: walk, building: true, steps: (tail.match(/"svg"\s*:/g) || []).length };
+  }
   function textOf(message) {
     return (message.content || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("");
   }
-  // Draws the bar picture the tutor describes. Built with DOM calls so nothing in the reply is run as markup.
-  function drawBars(spec) {
-    var NS = "http://www.w3.org/2000/svg";
-    var bars = spec && Array.isArray(spec.bars) ? spec.bars.slice(0, 3).filter(function (b) {
-      return Array.isArray(b) && isFinite(b[1]) && b[1] > 0;
-    }) : [];
-    if (!bars.length) return null;
-    var slices = Math.max(1, Math.min(12, Math.round(spec.slices) || 1));
-    var max = Math.max.apply(null, bars.map(function (b) { return +b[1]; }));
-    var svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("class", "pic");
-    svg.setAttribute("viewBox", "0 0 300 " + (bars.length * 56 - 4));
-    svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Bars to scale: " + bars.map(function (b) { return b[0] + " " + b[1]; }).join(", "));
-    bars.forEach(function (b, i) {
-      var y = i * 56, w = 292 * b[1] / max / slices;
-      var t = document.createElementNS(NS, "text");
-      t.setAttribute("x", 4);
-      t.setAttribute("y", y + 12);
-      t.textContent = (String(b[0]).slice(0, 28) + " · " + b[1]).toUpperCase();
-      svg.appendChild(t);
-      for (var k = 0; k < slices; k++) {
-        var r = document.createElementNS(NS, "rect");
-        r.setAttribute("class", "seg" + (k === 0 ? (i === 0 ? " a" : " b") : ""));
-        r.setAttribute("x", 4 + k * w);
-        r.setAttribute("y", y + 20);
-        r.setAttribute("width", Math.max(1, w - 2));
-        r.setAttribute("height", 24);
-        r.setAttribute("rx", 4);
-        svg.appendChild(r);
+  // The tutor's pictures arrive as SVG text. Nothing from it is inserted as markup: each allowed shape and
+  // attribute is copied across by name, and everything else (scripts, links, styles, images) is dropped.
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var SVG_TAGS = { svg: 1, g: 1, rect: 1, circle: 1, ellipse: 1, line: 1, polyline: 1, polygon: 1, path: 1, text: 1, tspan: 1 };
+  var SVG_ATTRS = {
+    viewBox: 1, x: 1, y: 1, x1: 1, y1: 1, x2: 1, y2: 1, cx: 1, cy: 1, r: 1, rx: 1, ry: 1, width: 1, height: 1, d: 1, points: 1,
+    fill: 1, stroke: 1, "stroke-width": 1, "stroke-dasharray": 1, "stroke-linecap": 1, "stroke-linejoin": 1,
+    opacity: 1, "fill-opacity": 1, "stroke-opacity": 1, transform: 1, "text-anchor": 1, "dominant-baseline": 1,
+    "font-size": 1, "font-weight": 1, "font-style": 1, dx: 1, dy: 1
+  };
+  function cleanSvg(markup) {
+    if (typeof markup !== "string" || !markup) return null;
+    var doc = new DOMParser().parseFromString(markup, "image/svg+xml"), root = doc.documentElement;
+    if (!root || root.nodeName !== "svg" || doc.getElementsByTagName("parsererror").length) return null;
+    function copy(src) {
+      if (!SVG_TAGS[src.nodeName]) return null;
+      var out = document.createElementNS(SVG_NS, src.nodeName);
+      for (var i = 0; i < src.attributes.length; i++) {
+        var a = src.attributes[i];
+        if (SVG_ATTRS[a.name] && !/url\s*\(|javascript:|[<>]/i.test(a.value)) out.setAttribute(a.name, a.value);
       }
-    });
+      for (var c = src.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) out.appendChild(document.createTextNode(c.nodeValue));
+        else if (c.nodeType === 1) { var kid = copy(c); if (kid) out.appendChild(kid); }
+      }
+      return out;
+    }
+    var svg = copy(root);
+    if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", "0 0 320 180");
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    svg.setAttribute("class", "walk-svg");
+    svg.setAttribute("role", "img");
     return svg;
   }
-  function pictureFrom(text) {
-    var m = /PICTURE:\s*(\{[\s\S]*\})\s*$/.exec(String(text || ""));
-    if (!m) return null;
-    try { return drawBars(JSON.parse(m[1])); } catch (e) { return null; }
+  // Turns {blue|20%} marks into coloured spans; everything else stays plain text.
+  var INK = { blue: "c-blue", yellow: "c-yellow", orange: "c-orange", green: "c-green" };
+  function marked(node, text) {
+    var s = String(text == null ? "" : text), re = /\{(blue|yellow|orange|green)\|([^{}]*)\}/g, last = 0, m;
+    node.textContent = "";
+    while ((m = re.exec(s))) {
+      if (m.index > last) node.appendChild(document.createTextNode(s.slice(last, m.index)));
+      node.appendChild(el("span", INK[m[1]], m[2]));
+      last = re.lastIndex;
+    }
+    if (last < s.length) node.appendChild(document.createTextNode(s.slice(last)));
+  }
+  // The first-principles step-through: one picture, one colour-coded formula line and a few sentences per step.
+  function stepper(walk) {
+    var steps = (walk && Array.isArray(walk.steps) ? walk.steps : []).filter(function (s) { return s && (s.text || s.svg); }).slice(0, 8);
+    if (!steps.length) return null;
+    var box = el("div", "walkthrough"), i = 0;
+    var legend = el("div", "walk-legend");
+    (Array.isArray(walk.legend) ? walk.legend : []).slice(0, 4).forEach(function (pair) {
+      if (!Array.isArray(pair) || !INK[pair[0]]) return;
+      var item = el("span");
+      item.appendChild(el("i", INK[pair[0]]));
+      item.appendChild(document.createTextNode(String(pair[1] == null ? "" : pair[1]).slice(0, 60)));
+      legend.appendChild(item);
+    });
+    var art = el("div", "walk-art"), formula = el("p", "walk-formula"), text = el("p", "walk-text");
+    var nav = el("div", "walk-nav"), back = el("button", "btn soft", "Back"), next = el("button", "btn", "Next step"), count = el("span", "label");
+    back.type = "button";
+    next.type = "button";
+    nav.appendChild(back);
+    nav.appendChild(next);
+    nav.appendChild(count);
+    var door = null;
+    if (typeof walk.next === "string" && walk.next.trim()) {
+      door = el("button", "chip door", walk.next.trim().slice(0, 160));
+      door.type = "button";
+      door.addEventListener("click", function () { chat(door.textContent, door.textContent); });
+    }
+    function show() {
+      var st = steps[i], svg = cleanSvg(st.svg);
+      art.textContent = "";
+      if (svg) art.appendChild(svg);
+      art.hidden = !svg;
+      marked(formula, st.formula);
+      formula.hidden = !st.formula;
+      marked(text, st.text);
+      count.textContent = "Step " + (i + 1) + " of " + steps.length;
+      back.disabled = i === 0;
+      next.textContent = i < steps.length - 1 ? "Next step" : "Start over";
+      if (door) door.hidden = i < steps.length - 1;
+    }
+    back.addEventListener("click", function () { if (i > 0) { i--; show(); } });
+    next.addEventListener("click", function () { i = (i + 1) % steps.length; show(); });
+    if (legend.firstChild) box.appendChild(legend);
+    box.appendChild(art);
+    box.appendChild(formula);
+    box.appendChild(text);
+    box.appendChild(nav);
+    if (door) box.appendChild(door);
+    show();
+    return box;
   }
   function bubble(cls, label, text) {
     var b = el("div", "bubble " + cls);
@@ -395,17 +486,23 @@
     ctl = new AbortController();
     window.Tutor.reply({
       key: apiKey, system: system, messages: messages, effort: effort, signal: ctl.signal,
-      onText: function (t) { out.textContent = visible(t) || "Thinking…"; view(box); }
+      onText: function (t) {
+        var r = splitReply(t);
+        out.textContent = (r.text + (r.building ? "\n\nDrawing step " + Math.max(1, r.steps) + "…" : "")).trim() || "Thinking…";
+        view(box);
+      }
     }).then(function (message) {
-      var text = textOf(message);
-      if (message.stop_reason === "refusal" || !visible(text)) {
+      var r = splitReply(textOf(message)), lesson = r.walk ? stepper(r.walk) : null;
+      if (message.stop_reason === "refusal" || (!r.text && !lesson)) {
         out.textContent = "The tutor could not answer that one. Try asking it a different way.";
         fail();
         return;
       }
-      out.textContent = visible(text);
-      var pic = pictureFrom(text);
-      if (pic) box.appendChild(pic);
+      out.textContent = r.text + (r.building && !lesson ? (r.text ? "\n\n" : "") + "The pictures did not come through. Ask again and I will redraw them." : "");
+      if (lesson) {
+        box.classList.add("wide");
+        box.appendChild(lesson);
+      }
       ok(message);
     }, function (e) {
       var info = window.Tutor.explain(e);
@@ -423,21 +520,21 @@
     view(box);
     var mine = turns; // stays with this question even if the student moves on mid-reply
     mine.push({ role: "user", content: note() + "\n\n" + sentText });
-    ask(mine.slice(), "low", box, function (message) {
+    ask(mine.slice(), "medium", box, function (message) {
       // Claude's reply goes back exactly as it arrived, so its reasoning stays valid on the next turn.
       mine.push({ role: "assistant", content: message.content });
     }, function () { mine.pop(); });
   }
   function why(i) {
-    if (i < 0) chat("But why?", "But why? I have not opened a hint yet.");
-    else chat("But why? (hint " + (i + 1) + ")", "But why? I am asking about hint " + (i + 1) + ".");
+    if (i < 0) chat("But why?", "But why? I have not opened a hint yet, and I do not know where to start. Walk me through the idea this question rests on.");
+    else chat("But why? (hint " + (i + 1) + ")", "Why does hint " + (i + 1) + " ask me to think this way? Walk me through the idea behind it.");
   }
   Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (chip) {
     chip.addEventListener("click", function () {
       var k = chip.getAttribute("data-q");
       if (k === "why") why(shown - 1);
       else if (k === "simple") chat("Explain it simpler", "Explain it more simply, please.");
-      else chat("Show me a picture", "Show me a picture that makes this clearer.");
+      else chat("Walk me through the idea", "Walk me through the idea behind this question, step by step with pictures.");
     });
   });
   $("send").addEventListener("click", function () {
@@ -466,7 +563,7 @@
     var text = $("work").value.trim(), file = photoFile;
     if (!apiKey) return;
     if (!text && !file) { $("work").focus(); return; }
-    var box = $("work-reply"), out = box.querySelector(".t"), old = box.querySelector("svg");
+    var box = $("work-reply"), out = box.querySelector(".t"), old = box.querySelector(".walkthrough");
     if (old) old.remove();
     box.hidden = false;
     out.textContent = "Thinking…";
@@ -479,7 +576,7 @@
         type: "text",
         text: note() + "\n\nThe student is showing you their working" + (img ? " in the attached photo of their handwritten notes" : "") +
           (text ? ', and says: "' + text + '"' : "") +
-          ". Say what is right so far, then point to the first step that goes off track by asking a question about it. If nothing is wrong yet, say so and ask what comes next. If you cannot read the photo, say so and ask them to retake it or type the step."
+          ". Say what is right so far, then point to the first step that goes off track by asking a question about it. If nothing is wrong yet, say so and ask what comes next. If you cannot read the photo, say so and ask them to retake it or type the step. Give a quick reply here, not a walkthrough."
       });
       ask([{ role: "user", content: content }], "medium", box, function () {}, function () {});
     }, function () {

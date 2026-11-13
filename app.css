@@ -197,11 +197,29 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan-hi); o
 .bubble b { display: block; font: 500 .66rem var(--mono); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; color: var(--cyan-hi); }
 .bubble .t { white-space: pre-wrap; }
 #work-reply { max-width: 100%; }
-.pic { display: block; width: 100%; height: auto; margin-top: 10px; }
-.pic text { fill: var(--muted); font: 500 10.5px var(--mono); letter-spacing: .04em; }
-.pic .seg { fill: var(--miss); }
-.pic .seg.a { fill: var(--yellow); }
-.pic .seg.b { fill: var(--cyan); }
+/* first-principles walkthrough: picture, colour-coded formula line, a few sentences, Back and Next */
+.bubble.wide { max-width: 100%; align-self: stretch; }
+.walkthrough { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.walk-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .78rem; color: var(--muted); }
+.walk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.walk-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.walk-legend i.c-blue { background: var(--cyan); }
+.walk-legend i.c-yellow { background: var(--yellow); }
+.walk-legend i.c-orange { background: var(--orange); }
+.walk-legend i.c-green { background: var(--green); }
+.walk-art { background: rgba(0, 0, 0, .28); border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+.walk-svg { display: block; width: 100%; height: auto; }
+.walk-svg text { fill: var(--text); font-family: var(--sans); }
+.walk-formula { font: 600 1.25rem/1.35 var(--serif); margin: 0; overflow-wrap: anywhere; }
+.walk-text { margin: 0; line-height: 1.6; }
+span.c-blue { color: var(--cyan-hi); font-weight: 600; }
+span.c-yellow { color: var(--yellow); font-weight: 600; }
+span.c-orange { color: var(--orange); font-weight: 600; }
+span.c-green { color: var(--green); font-weight: 600; }
+.walk-nav { display: flex; align-items: center; gap: 8px; }
+.walk-nav .btn { padding: 10px 14px; }
+.walk-nav .label { margin-left: auto; }
+.chip.door { align-self: flex-start; text-align: left; border-color: rgba(255, 229, 0, .35); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   font: 500 .85rem var(--sans); color: var(--text); background: rgba(255, 255, 255, .05);
