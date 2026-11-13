@@ -112,6 +112,14 @@
       <input class="field wide" id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API key">
       <button class="btn soft" id="test-key" type="button">Test key</button>
       <p class="label status" id="key-status" hidden><i></i><span id="key-text"></span></p>
+      <label for="tutor-mode">Speed and quality</label>
+      <select class="field wide" id="tutor-mode">
+        <option value="opus-medium">Opus, medium effort</option>
+        <option value="opus-fast">Opus, medium effort, fast mode (about 2× the price)</option>
+        <option value="sonnet-high">Sonnet, high effort</option>
+        <option value="opus-low">Opus, low effort</option>
+      </select>
+      <p class="sub">Each tutor reply shows how long it took, so you can compare these on real questions.</p>
     </section>
     <section class="card">
       <h2>Practice history</h2>

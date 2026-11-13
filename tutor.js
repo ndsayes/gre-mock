@@ -11,15 +11,16 @@ function client(key) {
 }
 
 // Streams one tutor reply. `onText` receives the whole answer so far. Resolves with the final message.
-async function reply({ key, system, messages, effort, onText, signal }) {
+async function reply({ key, model, effort, speed, system, messages, onText, signal }) {
   const body = {
-    model: MODEL,
+    model: model || MODEL,
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     output_config: { effort },
     system,
     messages,
   };
+  if (speed === "fast") body.speed = "fast"; // same model, faster output, about double the price
   const run = (stream) => {
     if (signal) {
       if (signal.aborted) stream.abort();

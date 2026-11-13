@@ -16,8 +16,17 @@
   }
   function clampTarget(n) { return Math.max(1, Math.min(30, Math.round(n) || 5)); }
 
+  // Which Claude model answers and how hard it thinks. Chosen in Settings so the speeds can be compared on real questions.
+  var PRESETS = {
+    "opus-medium": { model: "claude-opus-5-5", effort: "medium", label: "Opus medium" },
+    "opus-fast": { model: "claude-opus-5-5", effort: "medium", speed: "fast", label: "Opus medium, fast mode" },
+    "sonnet-high": { model: "claude-sonnet-5-5", effort: "high", label: "Sonnet high" },
+    "opus-low": { model: "claude-opus-5-5", effort: "low", label: "Opus low" }
+  };
+
   var settings = load("44d.settings", {});
   if (!settings || typeof settings !== "object") settings = {};
+  if (!PRESETS[settings.tutor]) settings.tutor = "opus-medium";
   settings.target = clampTarget(settings.target);
   if (typeof settings.name !== "string") settings.name = "ND";
   var log = load("44d.log", []);
@@ -480,8 +489,9 @@
     $("work-send").textContent = on ? "Stop" : "Check my work";
   }
   // Sends `messages` to Claude and streams the reply into `box`. Calls ok(message) or fail().
-  function ask(messages, effort, box, ok, fail) {
-    var out = box.querySelector(".t");
+  function ask(messages, box, ok, fail) {
+    var out = box.querySelector(".t"), mode = PRESETS[settings.tutor], began = Date.now(), stale = box.querySelector(".took");
+    if (stale) stale.remove();
     if (!window.Tutor) {
       out.textContent = "The tutor could not load. Check your connection, then close and reopen the app.";
       setBusy(false);
@@ -492,7 +502,7 @@
     out.textContent = "Thinking…";
     ctl = new AbortController();
     window.Tutor.reply({
-      key: apiKey, system: system, messages: messages, effort: effort, signal: ctl.signal,
+      key: apiKey, model: mode.model, effort: mode.effort, speed: mode.speed, system: system, messages: messages, signal: ctl.signal,
       onText: function (t) {
         var r = splitReply(t);
         out.textContent = (r.text + (r.building ? "\n\nDrawing step " + Math.max(1, r.steps) + "…" : "")).trim() || "Thinking…";
@@ -510,6 +520,7 @@
         box.classList.add("wide");
         box.appendChild(lesson);
       }
+      box.appendChild(el("span", "label took", Math.round((Date.now() - began) / 1000) + " s · " + mode.label));
       ok(message);
     }, function (e) {
       var info = window.Tutor.explain(e);
@@ -532,7 +543,7 @@
     view(box);
     var mine = turns; // stays with this question even if the student moves on mid-reply
     mine.push({ role: "user", content: note() + "\n\n" + sentText });
-    ask(mine.slice(), "medium", box, function (message) {
+    ask(mine.slice(), box, function (message) {
       // Claude's reply goes back exactly as it arrived, so its reasoning stays valid on the next turn.
       mine.push({ role: "assistant", content: message.content });
     }, function () { mine.pop(); });
@@ -591,7 +602,7 @@
           (text ? ', and says: "' + text + '"' : "") +
           ". Say what is right so far, then point to the first step that goes off track by asking a question about it. If nothing is wrong yet, say so and ask what comes next. If you cannot read the photo, say so and ask them to retake it or type the step. Give a quick reply here, not a walkthrough."
       });
-      ask([{ role: "user", content: content }], "medium", box, function () {}, function () {});
+      ask([{ role: "user", content: content }], box, function () {}, function () {});
     }, function () {
       out.textContent = "That photo could not be read. Try taking it again.";
       setBusy(false);
@@ -684,6 +695,7 @@
   function openSettings() {
     $("name").value = settings.name;
     $("key").value = apiKey;
+    $("tutor-mode").value = settings.tutor;
     $("key-status").hidden = true;
     show("settings");
   }
@@ -717,6 +729,10 @@
     save("44d.key", apiKey);
     $("key-status").hidden = true;
     render();
+  });
+  $("tutor-mode").addEventListener("change", function () {
+    if (PRESETS[this.value]) settings.tutor = this.value;
+    save("44d.settings", settings);
   });
   $("test-key").addEventListener("click", function () {
     var btn = this, st = $("key-status");
