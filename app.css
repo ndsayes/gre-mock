@@ -37,7 +37,13 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 button, input { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-#bg, .glow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+/* The owner asked for no zooming: pinch and double-tap zoom are off, and nothing may be wider than the screen. */
+html, dialog.sheet { touch-action: pan-x pan-y; }
+html, body, .sheet-body, textarea { scrollbar-width: none; }
+::-webkit-scrollbar { display: none; }
+/* The glow drifts and grows as it animates. This box clips it, so it never adds width to the page. */
+.backdrop { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+#bg, .glow { position: absolute; inset: 0; width: 100%; height: 100%; }
 .glow {
   background:
     radial-gradient(ellipse at 12% -8%, rgba(221, 234, 255, .13), transparent 52%),
@@ -290,7 +296,7 @@ textarea:focus-visible { outline: 2px solid var(--cyan-hi); outline-offset: 2px;
 .work-row input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .work-row label:focus-within { outline: 2px solid var(--cyan-hi); outline-offset: 2px; }
 #thumb { border-radius: 14px; max-height: 220px; object-fit: cover; width: 100%; }
-.field.wide { width: 100%; text-align: left; font-family: var(--mono); font-size: .9rem; }
+.field.wide { width: 100%; text-align: left; font-family: var(--mono); font-size: 1rem; } /* under 16px an iPhone zooms in on focus */
 select.field.wide { font-family: var(--sans); font-size: 1rem; }
 .took { display: block; margin-top: 8px; }
 

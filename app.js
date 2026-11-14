@@ -742,6 +742,9 @@
     clearTimeout(introTimer);
     introTimer = setTimeout(function () { h.classList.remove("intro"); }, 1500);
   }
+  // iPhone only: a two-finger pinch would still zoom the page despite the viewport setting.
+  document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+
   // ---------- updates ----------
   // The page's own files are loaded with ?v=N. Phones hold on to home-screen apps, so on every open the app
   // asks the server which N is current and, if it is newer, reloads from a fresh address. It only does this
