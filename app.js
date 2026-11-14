@@ -156,7 +156,7 @@
     $("bank-note").textContent = bank
       ? plural(bank.questions.length, "question") + " on this phone, last synced " + new Date(bank.syncedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "."
       : "Not connected yet. Until then the app uses its five built-in sample questions.";
-    $("stage-note").textContent = (bank ? plural(bank.questions.length, "question") + " in your bank" : "sample questions") + " · progress saved on this phone only";
+    $("stage-note").textContent = "Version " + (VERSION || "?") + " · " + (bank ? plural(bank.questions.length, "question") + " in your bank" : "sample questions");
 
     var hasKey = !!apiKey;
     $("chat-on").hidden = !hasKey;
@@ -730,6 +730,7 @@
     if (!$("session").hidden) keepAwake(true);
     render(); // the day may have changed while the app sat in the background
     if (dirty || wipe) backup();
+    checkUpdate();
   });
 
   // ---------- navigation ----------
@@ -741,6 +742,23 @@
     clearTimeout(introTimer);
     introTimer = setTimeout(function () { h.classList.remove("intro"); }, 1500);
   }
+  // ---------- updates ----------
+  // The page's own files are loaded with ?v=N. Phones hold on to home-screen apps, so on every open the app
+  // asks the server which N is current and, if it is newer, reloads from a fresh address. It only does this
+  // on the home screen, so a question in progress is never interrupted, and only once per version, so a
+  // phone that cannot fetch the new copy does not reload in a loop.
+  var VERSION = ((document.querySelector('script[src*="app.js"]') || { getAttribute: function () { return ""; } }).getAttribute("src").match(/v=(\d+)/) || [])[1] || "";
+  function checkUpdate() {
+    if (!VERSION || $("home").hidden) return;
+    fetch("index.html", { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : ""; }).then(function (html) {
+      var latest = (html.match(/app\.js\?v=(\d+)/) || [])[1], tried = "";
+      try { tried = sessionStorage.getItem("44d.updateTried") || ""; } catch (e) { tried = latest; }
+      if (!latest || latest === VERSION || latest === tried || $("home").hidden) return;
+      try { sessionStorage.setItem("44d.updateTried", latest); } catch (e) { return; }
+      location.replace(location.pathname + "?u=" + latest);
+    }).catch(function () {});
+  }
+
   // ---------- pop-up panels for the tutor and Show your work ----------
   function openSheet(id) {
     var d = $(id);
@@ -1078,4 +1096,5 @@
   if (ghToken && (!bank || Date.now() - Date.parse(bank.syncedAt) > 6 * 3600 * 1000)) syncBank(function () { render(); });
   // Every open: send anything waiting and pick up history saved from another install.
   backup();
+  checkUpdate();
 })();
