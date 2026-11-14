@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Source+Serif+4:wght@400;600&display=swap">
 <!-- Bump every ?v= below together on each release, so a phone never mixes old and new files. -->
-<link rel="stylesheet" href="app.css?v=8">
+<link rel="stylesheet" href="app.css?v=9">
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
@@ -127,6 +127,7 @@
       <p class="sub">A token that can only read that one repository. It is stored on this phone and sent only to GitHub.</p>
       <button class="btn soft" id="sync" type="button">Sync questions</button>
       <p class="label status" id="bank-status" hidden><i></i><span id="bank-text"></span></p>
+      <p class="sub" id="backup-note"></p>
     </section>
     <section class="card">
       <h2>Practice history</h2>
@@ -190,6 +191,7 @@
         <dt>Hints used</dt><dd id="log-hints"></dd>
       </dl>
       <p class="label status" id="saved"><i></i><span id="saved-text"></span></p>
+      <p class="label status" id="backup" hidden><i></i><span id="backup-text"></span></p>
       <button class="btn" id="next" type="button">Next question</button>
     </section>
   </div>
@@ -251,9 +253,9 @@
   </div>
 </dialog>
 
-<script src="stats.js?v=8"></script>
-<script src="questions.js?v=8"></script>
-<script src="app.js?v=8"></script>
-<script type="module" src="tutor.js?v=8"></script>
+<script src="stats.js?v=9"></script>
+<script src="questions.js?v=9"></script>
+<script src="app.js?v=9"></script>
+<script type="module" src="tutor.js?v=9"></script>
 </body>
 </html>

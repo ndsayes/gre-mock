@@ -83,6 +83,40 @@ var Stats = (function () {
     if (other.length) pool = other;
     return pool[Math.floor(rand() * pool.length)];
   }
-  return { key: key, addDays: addDays, monday: monday, byDay: byDay, share: share, streak: streak, lastDays: lastDays, weeks: weeks, weekTotal: weekTotal, pick: pick };
+  // The practice log as a spreadsheet-style file for the private repo: one row per finished question.
+  // GitHub shows it as a table and it opens in Excel. Times are in seconds.
+  var COLS = ["when", "day", "question", "blueprint", "area", "type", "target", "seconds_before_timer", "seconds_on_timer", "answers", "first_try", "hints"];
+  function toCsv(log) {
+    return COLS.join(",") + "\n" + log.map(function (r) {
+      return [
+        r.at, r.day, r.id, r.src || r.id, r.area, r.type, r.target,
+        (r.beforeMs / 1000).toFixed(1), r.timerMs == null ? "" : (r.timerMs / 1000).toFixed(1),
+        (r.answers || []).join("|"), r.firstTry ? "yes" : "no", r.hints
+      ].map(function (v) { return String(v == null ? "" : v).replace(/[,\r\n]/g, " "); }).join(",") + "\n";
+    }).join("");
+  }
+  function fromCsv(text) {
+    return String(text || "").split(/\r?\n/).slice(1).filter(Boolean).map(function (line) {
+      var c = line.split(",");
+      return {
+        at: c[0], day: c[1], id: c[2], src: c[3], area: c[4], type: c[5], target: +c[6] || 5,
+        beforeMs: Math.round(c[7] * 1000) || 0, timerMs: c[8] === "" || c[8] == null ? null : Math.round(c[8] * 1000),
+        answers: c[9] ? c[9].split("|") : [], firstTry: c[10] === "yes", hints: +c[11] || 0
+      };
+    }).filter(function (r) { return r.at && r.day && r.id; });
+  }
+  // Union of two logs, oldest first. A row is the same row if it has the same time and question.
+  function mergeLogs(mine, theirs) {
+    var seen = {}, out = [];
+    mine.concat(theirs).forEach(function (r) {
+      var k = r.at + "|" + r.id;
+      if (!seen[k]) { seen[k] = true; out.push(r); }
+    });
+    return out.sort(function (x, y) { return x.at < y.at ? -1 : x.at > y.at ? 1 : 0; });
+  }
+  return {
+    key: key, addDays: addDays, monday: monday, byDay: byDay, share: share, streak: streak, lastDays: lastDays,
+    weeks: weeks, weekTotal: weekTotal, pick: pick, toCsv: toCsv, fromCsv: fromCsv, mergeLogs: mergeLogs
+  };
 })();
 if (typeof module !== "undefined") module.exports = Stats;

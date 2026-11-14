@@ -149,9 +149,10 @@
 
     $("target-n").textContent = target;
     $("history-note").textContent = log.length
-      ? plural(log.length, "question") + " logged on this phone. Erasing clears your streak, chart and log."
+      ? plural(log.length, "question") + " logged. Erasing clears your streak, chart and log, on this phone and in the backup."
       : "Nothing logged yet.";
     $("erase").disabled = !log.length;
+    backupNote("");
     $("bank-note").textContent = bank
       ? plural(bank.questions.length, "question") + " on this phone, last synced " + new Date(bank.syncedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "."
       : "Not connected yet. Until then the app uses its five built-in sample questions.";
@@ -300,6 +301,8 @@
     $("log-hints").textContent = row.hints;
     $("saved").className = "label status" + (ok ? "" : " warn");
     $("saved-text").textContent = ok ? "Saved on this phone" : "Could not save on this phone";
+    setDirty(true);
+    backup();
     $("log-card").hidden = false;
     render();
   }
@@ -726,6 +729,7 @@
     if (document.hidden) return;
     if (!$("session").hidden) keepAwake(true);
     render(); // the day may have changed while the app sat in the background
+    if (dirty || wipe) backup();
   });
 
   // ---------- navigation ----------
@@ -878,8 +882,103 @@
       say(ok, text);
       btn.disabled = false;
       render();
+      if (ok) backup(); // on a fresh install this is also what brings the practice history back
     });
   });
+
+  // ---------- progress backup ----------
+  // The whole practice log is kept as log.csv in the private repo. Every save first reads the copy there
+  // and merges it with the phone's, so a reinstall or a second device never loses rows; each save is a
+  // commit, so GitHub also keeps the history. shortcut: reads the file through the JSON contents API,
+  // which stops at 1 MB (roughly 8,000 questions); switch to the raw form plus a tree lookup if it gets there.
+  var backing = false, again = false, tries = 0;
+  var dirty = load("44d.dirty", false) === true, wipe = load("44d.wipe", false) === true, backedAt = load("44d.backedAt", "");
+  function b64encode(text) {
+    var bytes = new TextEncoder().encode(text), bin = "";
+    for (var i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return btoa(bin);
+  }
+  function b64decode(b64) {
+    var bin = atob(String(b64 || "").replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function setDirty(on) {
+    dirty = on;
+    save("44d.dirty", on);
+  }
+  function showBackup(state, why) {
+    var line = $("backup");
+    line.hidden = !ghToken;
+    line.className = "label status" + (state === "fail" ? " warn" : "");
+    $("backup-text").textContent = state === "ok" ? "Backed up to your private repo"
+      : state === "busy" ? "Backing up…"
+      : "Not backed up yet: " + why + ". It will retry";
+    if (state === "ok") {
+      backedAt = new Date().toISOString();
+      save("44d.backedAt", backedAt);
+    }
+    backupNote(state === "fail" ? why : "");
+  }
+  function backupNote(problem) {
+    $("backup-note").textContent = !ghToken ? "Your progress is backed up to the same repository once a token is added."
+      : problem ? "Progress backup is not working: " + problem + "."
+      : dirty || wipe ? "Progress backup: changes waiting to be sent."
+      : backedAt ? "Progress backed up " + new Date(backedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "."
+      : "Progress backup has not run yet.";
+  }
+  function backup() {
+    if (!ghToken) return;
+    if (backing) { again = true; return; }
+    backing = true;
+    showBackup("busy");
+    var url = "https://api.github.com/repos/" + settings.repo + "/contents/log.csv";
+    var headers = { Authorization: "Bearer " + ghToken, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    fetch(url, { headers: headers, cache: "no-store" }).then(function (r) {
+      if (r.status === 404) return null; // no backup file yet
+      if (r.status === 401) throw new Error("GitHub did not accept the token");
+      if (!r.ok) throw new Error("GitHub answered with an error (" + r.status + ")");
+      return r.json();
+    }).then(function (file) {
+      var there = file ? b64decode(file.content) : "";
+      if (!wipe) { // normal case: fold in anything the repo has that this phone does not
+        var before = log.length;
+        log = Stats.mergeLogs(log, Stats.fromCsv(there));
+        if (log.length !== before) {
+          save("44d.log", log);
+          render();
+        }
+      }
+      var text = Stats.toCsv(log);
+      if (file && text === there) return true; // the repo already has everything
+      return fetch(url, {
+        method: "PUT", headers: headers,
+        body: JSON.stringify({ message: "Practice log: " + plural(log.length, "question"), content: b64encode(text), sha: file ? file.sha : undefined })
+      }).then(function (r) {
+        if (r.status === 409 || r.status === 422) return false; // the file changed under us: read it again
+        if (r.status === 403 || r.status === 404) throw new Error("this token cannot write to " + settings.repo + " (it needs Contents: Read and write)");
+        if (!r.ok) throw new Error("GitHub answered with an error (" + r.status + ")");
+        return true;
+      });
+    }).then(function (sent) {
+      if (!sent) {
+        if (++tries < 3) again = true;
+        else throw new Error("GitHub kept refusing the save");
+        return;
+      }
+      tries = 0;
+      if (wipe) { wipe = false; save("44d.wipe", false); }
+      setDirty(false);
+      showBackup("ok");
+    }).catch(function (e) {
+      tries = 0;
+      showBackup("fail", e instanceof TypeError ? "no connection to GitHub" : e.message);
+    }).then(function () {
+      backing = false;
+      if (again) { again = false; backup(); }
+    });
+  }
+  window.addEventListener("online", function () { if (dirty || wipe) backup(); });
 
   $("tutor-mode").addEventListener("change", function () {
     if (PRESETS[this.value]) settings.tutor = this.value;
@@ -913,7 +1012,11 @@
     log = [];
     save("44d.log", log);
     q = null;
+    // Erase the backup too, or the next sync would bring the old history straight back.
+    wipe = true;
+    save("44d.wipe", true);
     render();
+    backup();
   });
 
   // ---------- background: a sparse field of specks drifting slowly upward and twinkling ----------
@@ -973,4 +1076,6 @@
   introTimer = setTimeout(function () { $("home").classList.remove("intro"); }, 1500);
   // Pick up new questions quietly when the app opens, at most every six hours.
   if (ghToken && (!bank || Date.now() - Date.parse(bank.syncedAt) > 6 * 3600 * 1000)) syncBank(function () { render(); });
+  // Every open: send anything waiting and pick up history saved from another install.
+  backup();
 })();

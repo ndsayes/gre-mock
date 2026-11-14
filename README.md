@@ -21,15 +21,15 @@ written for the app.
   to give the answer before you solve it.
 - Show your work: a photo or a description of what you tried, checked by the tutor
 - Screen stays on while a question is open (where the phone allows it)
-- Progress is saved in the phone's browser storage only
-
-Still to come: realtime backup of the progress log to the private repository.
+- Progress backup: every finished question is saved on the phone and, within seconds, to `log.csv` in the
+  private repository (one row per question; GitHub shows it as a table). Saves wait on the phone when there
+  is no signal. A fresh install gets its history back the first time it syncs.
 
 ## Question bank
 
 In Settings, enter the private repository (`owner/name`) and a GitHub fine-grained access token limited to
-that repository with read-only access to Contents. The app downloads `bank.json` from it. The token is kept
-in the phone's browser storage and sent only to `api.github.com`.
+that repository with Contents set to Read and write. The app downloads `bank.json` from it and writes only
+`log.csv`. The token is kept in the phone's browser storage and sent only to `api.github.com`.
 
 ## Claude API key
 

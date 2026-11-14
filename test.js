@@ -51,4 +51,23 @@ var done3 = [{ id: "p1-a", src: "p1", area: "Percents", day: "2026-11-11", first
 assert.strictEqual(S.pick(bank, done3, today, first).src, "r1", "solved cleanly: no early repeat");
 var all = bank.map(function (q, i) { return { id: q.id, src: q.src, area: q.area, day: "2026-11-1" + i, firstTry: true, hints: 0 }; });
 assert.strictEqual(S.pick(bank, all, today, first).id, "p1-a", "everything done: the oldest comes round again");
+
+// The backup file: log -> file -> log keeps what matters, and writing it again gives the same file.
+var rows = [
+  { id: "p1-a", src: "p1", at: "2026-11-13T10:00:00.000Z", day: "2026-11-13", target: 5, area: "Number properties", type: "num", beforeMs: 12345, timerMs: 61999, answers: ["1,250", "3/8"], firstTry: false, hints: 2 },
+  { id: "r1-a", src: "r1", at: "2026-11-14T09:00:00.000Z", day: "2026-11-14", target: 6, area: "Ratios", type: "qc", beforeMs: 4000, timerMs: null, answers: ["C"], firstTry: true, hints: 0 }
+];
+var csv = S.toCsv(rows), back = S.fromCsv(csv);
+assert.strictEqual(csv.split("\n").length, 4, "header, two rows, trailing newline");
+assert.strictEqual(S.toCsv(back), csv, "round trip is stable");
+assert.deepStrictEqual([back[0].beforeMs, back[0].timerMs, back[0].firstTry, back[0].hints, back[0].target], [12300, 62000, false, 2, 5]);
+assert.deepStrictEqual(back[0].answers, ["1 250", "3/8"], "a comma inside an answer cannot break the row");
+assert.strictEqual(back[1].timerMs, null, "timer never started stays empty");
+assert.deepStrictEqual(S.fromCsv(""), []);
+assert.deepStrictEqual(S.fromCsv(S.toCsv([])), []);
+var merged = S.mergeLogs([rows[1]], back);
+assert.deepStrictEqual(merged.map(function (r) { return r.id; }), ["p1-a", "r1-a"], "merge drops duplicates and sorts oldest first");
+assert.strictEqual(merged[1], rows[1], "the phone's own copy of a row wins");
+assert.strictEqual(S.streak(S.byDay(merged), new Date(2026, 10, 14), 1), 1, "a restored day keeps the target it was done under (1 of 5 on the 13th is not a hit)");
+assert.strictEqual(S.byDay(merged)["2026-11-13"].target, 5);
 console.log("all checks passed");
