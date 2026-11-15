@@ -12,7 +12,7 @@ written for the app.
 - Settings: daily target, name, Claude API key, tutor speed and the question bank connection
 - Question types: quantitative comparison, multiple choice, select all that apply and numeric entry,
   with figures and charts
-- Question bank: downloaded from a private repository and kept on the phone. New blueprints come
+- Question bank: downloaded from a private repository and kept on the phone (in IndexedDB, since it outgrew localStorage). New blueprints come
   first; a question you struggled with returns two days later as a different version of the same idea.
   Until a bank is connected, five built-in sample questions are used.
 - Hints, a manual timer, a worked explanation, a key idea and, where one exists, a faster test-day route

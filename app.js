@@ -44,8 +44,22 @@
   // The question bank is fetched from the owner's private GitHub repo with a read-only token and kept on this phone.
   var ghToken = load("44d.gh", "");
   if (typeof ghToken !== "string") ghToken = "";
-  var bank = load("44d.bank", null);
-  if (!bank || !Array.isArray(bank.questions) || !bank.questions.length) bank = null;
+  // The bank lives in IndexedDB: a full one is several MB, more than localStorage holds on an iPhone, and it
+  // must never crowd out the practice log. Installs from before version 12 kept it in localStorage.
+  function goodBank(b) { return b && Array.isArray(b.questions) && b.questions.length ? b : null; }
+  var bank = goodBank(load("44d.bank", null));
+  function bankDb(mode, work) {
+    return new Promise(function (ok, fail) {
+      var open = indexedDB.open("44d", 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore("kv"); };
+      open.onerror = function () { fail(open.error); };
+      open.onsuccess = function () {
+        var db = open.result, tx = db.transaction("kv", mode), req = work(tx.objectStore("kv"));
+        tx.oncomplete = function () { db.close(); ok(req.result); };
+        tx.onabort = tx.onerror = function () { db.close(); fail(tx.error); };
+      };
+    });
+  }
   if (typeof settings.repo !== "string" || !settings.repo) settings.repo = "ndsayes/gre-mock-data";
   var picks = [];
 
@@ -440,9 +454,9 @@
       "Words like clearly, simply and obviously mark a skipped step, so leave them out. Answer the exact question they asked, however basic: they are relearning this and chose to ask.",
       "",
       "Test-day habits. These come second: understanding first, speed after. Bring one in only when it fits this question's type and the idea itself has landed, as the faster route for next time.",
-      "- Comparisons: when both quantities are plain numbers, the relationship can always be determined. To show it cannot be determined, two cases with different outcomes are enough, so test different kinds of number: negative, zero, a fraction between 0 and 1, 1, something large.",
-      "- Comparisons: compare rather than compute. Do the same thing to both quantities, or compare them piece by piece.",
-      "- An unknown total with percents or fractions: call it 100, or a multiple of the denominators. Variables in the answer choices: pick small numbers and test the choices.",
+      "- Comparisons: two plain numbers can always be compared. To show it cannot be determined, two cases that disagree are enough, so test different kinds of number: negative, 0, a fraction between 0 and 1, 1, something large.",
+      "- Comparisons: compare rather than compute. Do the same thing to both quantities (multiply or divide only by a known positive), or compare piece by piece. If one quantity is a plain number, try it in the given information.",
+      "- An unknown total with percents or fractions: call it 100, or a multiple of the denominators. Variables in the answer choices: pick small numbers, not 0 or 1, and test every choice.",
       "- Numbers in the choices and one value asked for: work backwards from a middle choice, which also shows which way to move.",
       "- Select-all questions: judge each choice on its own. Numeric entry: no choices will catch a slip, so reread what is asked and the units before answering.",
       "- Charts: read the title, axes, units and key before the question, then estimate. A percent change in an amount is not a change in percentage points. Geometry figures are not drawn to scale; charts and coordinate grids are.",
@@ -875,8 +889,12 @@
       });
       if (!good.length) throw new Error("The question bank is empty");
       bank = { questions: good, syncedAt: new Date().toISOString() };
-      var kept = save("44d.bank", bank);
-      done(true, plural(good.length, "question") + " synced" + (kept ? "" : ", but too large to keep offline"));
+      return bankDb("readwrite", function (s) { return s.put(bank, "bank"); }).then(function () {
+        try { localStorage.removeItem("44d.bank"); } catch (e) { /* nothing to free */ }
+        return true;
+      }, function () { return false; }).then(function (kept) {
+        done(true, plural(good.length, "question") + " synced" + (kept ? "" : ", but not kept for offline use"));
+      });
     }).catch(function (e) {
       done(false, e instanceof TypeError ? "No connection to GitHub" : e.message);
     });
@@ -1096,7 +1114,11 @@
   render();
   introTimer = setTimeout(function () { $("home").classList.remove("intro"); }, 1500);
   // Pick up new questions quietly when the app opens, at most every six hours.
-  if (ghToken && (!bank || Date.now() - Date.parse(bank.syncedAt) > 6 * 3600 * 1000)) syncBank(function () { render(); });
+  bankDb("readonly", function (s) { return s.get("bank"); }).then(function (kept) {
+    if (goodBank(kept)) { bank = kept; render(); }
+  }, function () { /* no database here: carry on with what is in memory */ }).then(function () {
+    if (ghToken && (!bank || Date.now() - Date.parse(bank.syncedAt) > 6 * 3600 * 1000)) syncBank(function () { render(); });
+  });
   // Every open: send anything waiting and pick up history saved from another install.
   backup();
   checkUpdate();
