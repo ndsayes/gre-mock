@@ -336,6 +336,14 @@
     $("check").disabled = !this.value.trim();
     $("verdict").hidden = true;
   });
+  // The iPhone number pad has no slash either: this one adds the fraction bar, once.
+  $("num-slash").addEventListener("click", function () {
+    var f = $("num");
+    if (f.disabled) return;
+    if (f.value && f.value.indexOf("/") < 0) f.value += "/";
+    f.dispatchEvent(new Event("input"));
+    f.focus();
+  });
   // The iPhone number pad has no minus key, so this button switches the sign.
   $("num-sign").addEventListener("click", function () {
     var f = $("num");
