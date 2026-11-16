@@ -192,6 +192,7 @@ h1.hello { font-size: 2.15rem; line-height: 1.1; margin: 10px 0 6px; text-wrap: 
 .choice.right { border-color: var(--green); background: var(--green-soft); }
 .choice:disabled { cursor: default; }
 .num-row { display: flex; align-items: center; gap: 10px; font-family: var(--serif); font-size: 1.05rem; }
+.num-row .sign { width: auto; margin: 0; padding: 11px 15px; font: 600 1.15rem var(--sans); border-radius: 14px; }
 .field.num { width: 9rem; text-align: left; font: 600 1.15rem var(--sans); font-variant-numeric: tabular-nums; padding: 13px 14px; border-radius: 14px; }
 .takeaway.fast { background: var(--yellow-soft); border-color: rgba(255, 229, 0, .16); }
 .takeaway.fast b { color: var(--yellow); }

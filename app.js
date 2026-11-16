@@ -336,6 +336,14 @@
     $("check").disabled = !this.value.trim();
     $("verdict").hidden = true;
   });
+  // The iPhone number pad has no minus key, so this button switches the sign.
+  $("num-sign").addEventListener("click", function () {
+    var f = $("num");
+    if (f.disabled) return;
+    f.value = f.value.charAt(0) === "-" ? f.value.slice(1) : "-" + f.value;
+    f.dispatchEvent(new Event("input"));
+    f.focus();
+  });
   $("check").addEventListener("click", function () {
     if (solved) return;
     var v = $("verdict"), right, said, trap = "";

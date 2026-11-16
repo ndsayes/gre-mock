@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Source+Serif+4:wght@400;600&display=swap">
 <!-- Bump every ?v= below together on each release, so a phone never mixes old and new files. -->
-<link rel="stylesheet" href="app.css?v=12">
+<link rel="stylesheet" href="app.css?v=13">
 </head>
 <body>
 <div class="backdrop" aria-hidden="true">
@@ -163,6 +163,7 @@
       <p class="label" id="multi-note" hidden>Select all that apply</p>
       <div class="choices" id="choices"></div>
       <div class="num-row" id="num-row" hidden>
+        <button class="btn soft sign" id="num-sign" type="button" aria-label="Switch the answer between negative and positive">±</button>
         <input class="field num" id="num" type="text" inputmode="decimal" autocomplete="off" aria-label="Your answer">
         <span id="num-unit"></span>
       </div>
@@ -255,9 +256,9 @@
   </div>
 </dialog>
 
-<script src="stats.js?v=12"></script>
-<script src="questions.js?v=12"></script>
-<script src="app.js?v=12"></script>
-<script type="module" src="tutor.js?v=12"></script>
+<script src="stats.js?v=13"></script>
+<script src="questions.js?v=13"></script>
+<script src="app.js?v=13"></script>
+<script type="module" src="tutor.js?v=13"></script>
 </body>
 </html>
